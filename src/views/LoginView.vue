@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 
 const email = ref('')
 const password = ref('')
@@ -46,6 +46,15 @@ const handleLogin = () => {
   console.log('Login:', { email: email.value, password: password.value })
   // Adicione aqui a lógica de autenticação
 }
+
+onMounted(() => {
+  document.body.style.overflowY = 'hidden'
+})
+
+onUnmounted(() => {
+  document.body.style.overflowY = ''
+})
+
 </script>
 
 <style scoped>
