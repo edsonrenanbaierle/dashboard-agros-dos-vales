@@ -405,6 +405,9 @@ const crescimentoChartOption = computed(() => {
     return cumulative
   })
 
+  // Checagem se é mobile
+  const isMobile = window.innerWidth <= 768
+
   return {
     tooltip: {
       trigger: 'axis',
@@ -413,10 +416,10 @@ const crescimentoChartOption = computed(() => {
       }
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '3%',
+      left: isMobile ? '5%' : '3%',
+      right: isMobile ? '5%' : '4%',
+      bottom: isMobile ? '5%' : '3%',
+      top: isMobile ? '5%' : '3%',
       containLabel: true
     },
     xAxis: {
@@ -424,14 +427,16 @@ const crescimentoChartOption = computed(() => {
       boundaryGap: false,
       data: usuariosData.value.crescimento_temporal.map(item => formatDateShort(item.data)),
       axisLabel: {
-        fontSize: 11,
-        interval: 4
+        fontSize: isMobile ? 9 : 11,
+        interval: isMobile ? 5 : 4,
+        rotate: isMobile ? 45 : 0
       }
     },
     yAxis: {
       type: 'value',
       axisLabel: {
-        formatter: '{value}'
+        formatter: '{value}',
+        fontSize: isMobile ? 9 : 11
       }
     },
     series: [
@@ -441,7 +446,7 @@ const crescimentoChartOption = computed(() => {
         data: cumulativeData,
         smooth: true,
         itemStyle: { color: '#3b82f6' },
-        lineStyle: { width: 3 },
+        lineStyle: { width: isMobile ? 2 : 3 },
         areaStyle: {
           color: {
             type: 'linear',
@@ -613,7 +618,7 @@ const crescimentoChartOption = computed(() => {
 /* Two Column Grid */
 .two-column-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 24px;
   margin-bottom: 32px;
 }
@@ -625,6 +630,7 @@ const crescimentoChartOption = computed(() => {
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+  overflow: hidden;
 }
 
 /* Content Card */
@@ -891,8 +897,25 @@ const crescimentoChartOption = computed(() => {
     padding: 16px;
   }
 
+  .chart-card {
+    padding: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .chart-container {
-    height: 300px;
+    height: 280px;
+    min-height: 280px;
+    min-width: 100%;
+  }
+
+  .section-title {
+    font-size: 15px;
+    margin-bottom: 12px;
+  }
+
+  .section-description {
+    font-size: 12px;
   }
 
   .table-container {
