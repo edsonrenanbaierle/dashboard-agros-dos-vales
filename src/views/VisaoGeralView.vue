@@ -1,13 +1,16 @@
 <template>
   <div class="dashboard-container">
     <!-- Sidebar -->
-    <Sidebar />
+    <Sidebar ref="sidebarRef" />
 
-    <!-- Main Content -->
+     <!-- Main Content -->
     <main class="main-content">
       <!-- Header -->
       <header class="dashboard-header">
-        <h1 class="dashboard-title">Visão Geral do Painel</h1>
+        <button class="hamburger-btn" @click="toggleSidebar">
+          <Menu :size="24" />
+        </button>
+        <h1 class="dashboard-title">Plantas Medicinais</h1>
         <button class="btn-sair">
           <LogOut :size="16" />
           Sair
@@ -89,11 +92,20 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart, BarChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
-import { LogOut, TrendingUp, TrendingDown } from 'lucide-vue-next'
+import { LogOut, TrendingUp, TrendingDown, Menu } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 
 // Register ECharts components
 use([CanvasRenderer, PieChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent])
+
+// Sidebar ref and toggle
+const sidebarRef = ref(null)
+
+const toggleSidebar = () => {
+  if (sidebarRef.value) {
+    sidebarRef.value.openSidebar()
+  }
+}
 
 // Mock data
 const dashboardData = ref({
@@ -275,6 +287,7 @@ const topPlantsChartOption = computed(() => ({
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 16px;
 }
 
 .dashboard-title {
@@ -282,6 +295,21 @@ const topPlantsChartOption = computed(() => ({
   font-weight: 600;
   color: #111827;
   margin: 0;
+}
+
+.hamburger-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #111827;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.hamburger-btn:hover {
+  background-color: #f3f4f6;
 }
 
 .btn-sair {
@@ -416,8 +444,16 @@ const topPlantsChartOption = computed(() => ({
 
 /* Responsive */
 @media (max-width: 768px) {
+  .hamburger-btn {
+    display: block;
+  }
+
   .main-content {
     margin-left: 0;
+  }
+
+  .dashboard-title {
+    font-size: 18px;
   }
   
   .stats-grid {
