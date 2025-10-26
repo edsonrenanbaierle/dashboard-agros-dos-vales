@@ -416,9 +416,9 @@ const crescimentoChartOption = computed(() => {
       }
     },
     grid: {
-      left: isMobile ? '5%' : '3%',
-      right: isMobile ? '5%' : '4%',
-      bottom: isMobile ? '5%' : '3%',
+      left: isMobile ? '8%' : '3%',
+      right: isMobile ? '3%' : '4%',
+      bottom: isMobile ? '20%' : '3%',
       top: isMobile ? '5%' : '3%',
       containLabel: true
     },
@@ -427,16 +427,17 @@ const crescimentoChartOption = computed(() => {
       boundaryGap: false,
       data: usuariosData.value.crescimento_temporal.map(item => formatDateShort(item.data)),
       axisLabel: {
-        fontSize: isMobile ? 9 : 11,
-        interval: isMobile ? 5 : 4,
-        rotate: isMobile ? 45 : 0
+        fontSize: isMobile ? 8 : 11,
+        interval: isMobile ? 6 : 4,
+        rotate: isMobile ? 45 : 0,
+        margin: isMobile ? 10 : 8
       }
     },
     yAxis: {
       type: 'value',
       axisLabel: {
         formatter: '{value}',
-        fontSize: isMobile ? 9 : 11
+        fontSize: isMobile ? 10 : 11
       }
     },
     series: [
@@ -899,14 +900,14 @@ const crescimentoChartOption = computed(() => {
 
   .chart-card {
     padding: 16px;
-    overflow-x: auto;
+    overflow-x: visible;
     -webkit-overflow-scrolling: touch;
   }
 
   .chart-container {
-    height: 280px;
-    min-height: 280px;
-    min-width: 100%;
+    height: 320px;
+    min-height: 320px;
+    width: 100%;
   }
 
   .section-title {
