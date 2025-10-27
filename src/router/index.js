@@ -6,6 +6,7 @@ import plantasMedicinais from '../views/PlantasMedicinaisView.vue'
 import conteudoEducacional from '../views/ConteudoEducacionalView.vue'
 import relacoesComerciais from '../views/RelacoesComerciasView.vue'
 import gerenciadorUsuarios from '../views/GerenciadorUsuariosView.vue'
+import notFound from '../views/NotFoundView.vue'
 
 const routes = [
   {
@@ -42,6 +43,11 @@ const routes = [
     path: '/gerenciador-usuarios',
     name: 'gerenciadorUsuarios',
     component: gerenciadorUsuarios
+  },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'notFound',
+    component: notFound
   }
 ]
 

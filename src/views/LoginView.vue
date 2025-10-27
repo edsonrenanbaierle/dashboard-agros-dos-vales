@@ -4,6 +4,11 @@
       <h1 class="title">Bem-vindo de volta!</h1>
       
       <form @submit.prevent="handleLogin">
+        <!-- Mensagem de erro -->
+        <div v-if="error" class="error-message">
+          {{ error }}
+        </div>
+
         <div class="form-group">
           <label for="email" class="label">Login</label>
           <input
@@ -13,6 +18,7 @@
             placeholder="seu.email@exemplo.com"
             class="input"
             required
+            :disabled="loading"
           />
         </div>
 
@@ -25,11 +31,12 @@
             placeholder="••••••••"
             class="input"
             required
+            :disabled="loading"
           />
         </div>
 
-        <button type="submit" class="submit-button">
-          Entrar
+        <button type="submit" class="submit-button" :disabled="loading">
+          {{ loading ? 'Entrando...' : 'Entrar' }}
         </button>
       </form>
     </div>
@@ -38,13 +45,38 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { authService } from '@/services'
 
+const router = useRouter()
 const email = ref('')
 const password = ref('')
+const loading = ref(false)
+const error = ref('')
 
-const handleLogin = () => {
-  console.log('Login:', { email: email.value, password: password.value })
-  // Adicione aqui a lógica de autenticação
+const handleLogin = async () => {
+  if (!email.value || !password.value) {
+    error.value = 'Por favor, preencha todos os campos'
+    return
+  }
+
+  loading.value = true
+  error.value = ''
+
+  try {
+    await authService.login({
+      email: email.value,
+      password: password.value
+    })
+    
+    // Redireciona para a visão geral após login bem-sucedido
+    router.push('/visao-geral')
+  } catch (err) {
+    console.error('Erro ao fazer login:', err)
+    error.value = err.response?.data?.message || 'Erro ao fazer login. Verifique suas credenciais.'
+  } finally {
+    loading.value = false
+  }
 }
 
 onMounted(() => {
@@ -136,5 +168,21 @@ onUnmounted(() => {
 
 .submit-button:active {
   background-color: #166534;
+}
+
+.submit-button:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background-color: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  text-align: center;
 }
 </style>
