@@ -245,54 +245,62 @@ const distribuicaoCidades = computed(() => {
 })
 
 // Interesses Bar Chart
-const interessesChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: {
-      type: 'shadow'
-    },
-    formatter: (params) => {
-      return `${params[0].name}: ${params[0].value} usuários`
-    }
-  },
-  grid: {
-    left: '25%',
-    right: '4%',
-    bottom: '3%',
-    top: '3%',
-    containLabel: true
-  },
-  xAxis: {
-    type: 'value',
-    show: true,
-    axisLabel: {
-      formatter: '{value}'
-    }
-  },
-  yAxis: {
-    type: 'category',
-    data: relacoesData.value.interesses.mais_populares.map(i => i.descricao).reverse(),
-    axisLine: { show: false },
-    axisTick: { show: false },
-    axisLabel: {
-      fontSize: 12
-    }
-  },
-  series: [
-    {
-      name: 'Usuários',
-      type: 'bar',
-      data: relacoesData.value.interesses.mais_populares.map(i => ({
-        value: i.total_usuarios,
-        itemStyle: { color: '#10b981' }
-      })).reverse(),
-      barWidth: '60%',
-      label: {
-        show: false
+const interessesChartOption = computed(() => {
+  const isMobile = window.innerWidth <= 768
+
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: (params) => {
+        return `${params[0].name}: ${params[0].value} usuários`
       }
-    }
-  ]
-}))
+    },
+    grid: {
+      left: isMobile ? '10px' : '3%',
+      right: isMobile ? '10px' : '4%',
+      bottom: isMobile ? '10px' : '3%',
+      top: isMobile ? '10px' : '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      show: true,
+      axisLabel: {
+        formatter: '{value}',
+        fontSize: isMobile ? 10 : 12
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: relacoesData.value.interesses.mais_populares.map(i => i.descricao).reverse(),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        fontSize: isMobile ? 10 : 12,
+        width: isMobile ? 150 : undefined,
+        overflow: isMobile ? 'truncate' : undefined,
+        ellipsis: isMobile ? '...' : undefined
+      }
+    },
+    series: [
+      {
+        name: 'Usuários',
+        type: 'bar',
+        data: relacoesData.value.interesses.mais_populares.map(i => ({
+          value: i.total_usuarios,
+          itemStyle: { color: '#10b981' }
+        })).reverse(),
+        barWidth: isMobile ? '50%' : '60%',
+        label: {
+          show: false
+        }
+      }
+    ]
+  }
+})
 </script>
 
 <style scoped>
@@ -385,6 +393,9 @@ const interessesChartOption = computed(() => ({
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Content Card */
@@ -394,6 +405,7 @@ const interessesChartOption = computed(() => ({
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+  overflow: hidden;
 }
 
 .section-title {
@@ -412,6 +424,8 @@ const interessesChartOption = computed(() => ({
 .chart-container {
   height: 400px;
   width: 100%;
+  flex: 1;
+  min-height: 300px;
 }
 
 /* Industries List */
@@ -459,6 +473,7 @@ const interessesChartOption = computed(() => ({
 
 .data-table {
   width: 100%;
+  min-width: 500px;
   border-collapse: collapse;
   font-size: 14px;
 }
@@ -576,7 +591,7 @@ const interessesChartOption = computed(() => ({
   }
 
   .chart-container {
-    height: 350px;
+    min-height: 400px;
   }
 
   .table-container {

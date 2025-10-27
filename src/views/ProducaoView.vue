@@ -488,6 +488,7 @@ const topPlantasChartOption = computed(() => ({
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+   overflow: hidden;
 }
 
 .table-title {
@@ -505,10 +506,12 @@ const topPlantasChartOption = computed(() => ({
 
 .table-container {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .data-table {
   width: 100%;
+  min-width: 500px;
   border-collapse: collapse;
 }
 
