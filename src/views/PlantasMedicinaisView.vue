@@ -118,31 +118,36 @@ const plantasData = ref({
 })
 
 // Top Indicações Bar Chart
-const indicacoesChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: {
-      type: 'shadow'
+const indicacoesChartOption = computed(() => {
+  // Calcular o valor máximo arredondado para cima
+  const maxValue = Math.max(...plantasData.value.indicacoes.mais_usadas.map(i => i.total_plantas))
+  const maxRounded = Math.ceil(maxValue / 10) * 10
+
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: (params) => {
+        return `${params[0].name}: ${params[0].value} plantas`
+      }
     },
-    formatter: (params) => {
-      return `${params[0].name}: ${params[0].value} plantas`
-    }
-  },
-  grid: {
-    left: '15%',
-    right: '4%',
-    bottom: '3%',
-    top: '3%',
-    containLabel: true
-  },
-  xAxis: {
-    type: 'value',
-    show: true,
-    max: 100,
-    axisLabel: {
-      formatter: '{value}'
-    }
-  },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      show: true,
+      max: maxRounded,
+      axisLabel: {
+        formatter: '{value}'
+      }
+    },
   yAxis: {
     type: 'category',
     data: plantasData.value.indicacoes.mais_usadas.map(i => i.descricao).reverse(),
@@ -166,7 +171,8 @@ const indicacoesChartOption = computed(() => ({
       }
     }
   ]
-}))
+  }
+})
 </script>
 
 <style scoped>
