@@ -11,10 +11,7 @@
           <Menu :size="24" />
         </button>
         <h1 class="dashboard-title">Plantas Medicinais</h1>
-        <button class="btn-sair">
-          <LogOut :size="16" />
-          Sair
-        </button>
+        <LogoutButton />
       </header>
 
       <!-- Dashboard Content -->
@@ -92,8 +89,9 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { PieChart, BarChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
-import { LogOut, TrendingUp, TrendingDown, Menu } from 'lucide-vue-next'
+import { TrendingUp, TrendingDown, Menu } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
+import LogoutButton from '../components/LogoutButton.vue'
 
 // Register ECharts components
 use([CanvasRenderer, PieChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent])
@@ -310,25 +308,6 @@ const topPlantsChartOption = computed(() => ({
 
 .hamburger-btn:hover {
   background-color: #f3f4f6;
-}
-
-.btn-sair {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background-color: #ef4444;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.btn-sair:hover {
-  background-color: #dc2626;
 }
 
 /* Dashboard Body */
