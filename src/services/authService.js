@@ -14,8 +14,8 @@ const authService = {
       const response = await api.post('/login', credentials)
       
       // Salvar token e dados do usuário no localStorage
-      if (response.data.token) {
-        localStorage.setItem('auth_token', response.data.token)
+      if (response.data.access_token) {
+        localStorage.setItem('auth_token', response.data.access_token)
         localStorage.setItem('user', JSON.stringify(response.data.user))
       }
       

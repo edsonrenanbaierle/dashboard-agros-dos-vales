@@ -14,8 +14,8 @@
           <input
             id="email"
             v-model="email"
-            type="email"
-            placeholder="seu.email@exemplo.com"
+            type="text"
+            placeholder="Digite seu email ou nome de usuário"
             class="input"
             required
             :disabled="loading"
@@ -66,7 +66,7 @@ const handleLogin = async () => {
   try {
     await authService.login({
       email: email.value,
-      password: password.value
+      senha: password.value
     })
     
     // Redireciona para a visão geral após login bem-sucedido
