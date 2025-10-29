@@ -16,6 +16,17 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-body">
+        <!-- Loading State -->
+        <LoadingSpinner v-if="loading" text="Carregando dados de usuários..." />
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+          <button @click="loadUsuariosData" class="retry-btn">Tentar novamente</button>
+        </div>
+
+        <!-- Data Content -->
+        <div v-else-if="usuariosData">
         <!-- Stats Cards -->
         <div class="stats-grid">
           <!-- Total de Usuários -->
@@ -24,7 +35,6 @@
               <div>
                 <p class="stat-label">Total de Usuários</p>
                 <p class="stat-value">{{ usuariosData.totais.geral.toLocaleString('pt-BR') }}</p>
-                <p class="stat-change positive">+15% este mês</p>
               </div>
               <div class="stat-icon blue">
                 <Users :size="24" />
@@ -79,8 +89,15 @@
         <div class="two-column-grid">
           <!-- Crescimento de Usuários -->
           <div class="chart-card">
-            <h3 class="section-title">Crescimento de Usuários (Últimos 30 Dias)</h3>
-            <v-chart :option="crescimentoChartOption" class="chart-container" />
+            <h3 class="section-title">Crescimento de Usuários</h3>
+            <p class="section-description" v-if="usuariosData.crescimento_temporal && usuariosData.crescimento_temporal.length > 0">
+              Evolução acumulativa baseada em {{ usuariosData.crescimento_temporal.length }} 
+              {{ usuariosData.crescimento_temporal.length === 1 ? 'registro' : 'registros' }}
+            </p>
+            <v-chart v-if="usuariosData.crescimento_temporal && usuariosData.crescimento_temporal.length > 0" :option="crescimentoChartOption" class="chart-container" />
+            <div v-else class="empty-chart">
+              <p>Sem dados de crescimento disponíveis</p>
+            </div>
           </div>
 
           <!-- Distribuição por Estado -->
@@ -150,24 +167,27 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
+import { LineChart, BarChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, GridComponent } from 'echarts/components'
 import { Menu, Users, UserCheck, UserX, UserCog } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import LogoutButton from '../components/LogoutButton.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import { analyticsService } from '@/services'
 
 // Register ECharts components
-use([CanvasRenderer, LineChart, TitleComponent, TooltipComponent, GridComponent])
+use([CanvasRenderer, LineChart, BarChart, TitleComponent, TooltipComponent, GridComponent])
 
 // Sidebar ref and toggle
 const sidebarRef = ref(null)
@@ -178,176 +198,40 @@ const toggleSidebar = () => {
   }
 }
 
-// Mock data
-const usuariosData = ref({
-  totais: {
-    geral: 1547,
-    ativos: 1402,
-    inativos: 145,
-    por_tipo: {
-      produtor: 892,
-      industria: 234,
-      interessado: 398,
-      admin: 23
-    }
-  },
-  crescimento_temporal: [
-    { data: "2025-09-27", novos_usuarios: 3 },
-    { data: "2025-09-28", novos_usuarios: 5 },
-    { data: "2025-09-29", novos_usuarios: 2 },
-    { data: "2025-09-30", novos_usuarios: 7 },
-    { data: "2025-10-01", novos_usuarios: 4 },
-    { data: "2025-10-02", novos_usuarios: 6 },
-    { data: "2025-10-03", novos_usuarios: 8 },
-    { data: "2025-10-04", novos_usuarios: 3 },
-    { data: "2025-10-05", novos_usuarios: 5 },
-    { data: "2025-10-06", novos_usuarios: 4 },
-    { data: "2025-10-07", novos_usuarios: 9 },
-    { data: "2025-10-08", novos_usuarios: 6 },
-    { data: "2025-10-09", novos_usuarios: 7 },
-    { data: "2025-10-10", novos_usuarios: 4 },
-    { data: "2025-10-11", novos_usuarios: 5 },
-    { data: "2025-10-12", novos_usuarios: 3 },
-    { data: "2025-10-13", novos_usuarios: 8 },
-    { data: "2025-10-14", novos_usuarios: 6 },
-    { data: "2025-10-15", novos_usuarios: 7 },
-    { data: "2025-10-16", novos_usuarios: 5 },
-    { data: "2025-10-17", novos_usuarios: 4 },
-    { data: "2025-10-18", novos_usuarios: 9 },
-    { data: "2025-10-19", novos_usuarios: 6 },
-    { data: "2025-10-20", novos_usuarios: 8 },
-    { data: "2025-10-21", novos_usuarios: 5 },
-    { data: "2025-10-22", novos_usuarios: 7 },
-    { data: "2025-10-23", novos_usuarios: 4 },
-    { data: "2025-10-24", novos_usuarios: 6 },
-    { data: "2025-10-25", novos_usuarios: 8 },
-    { data: "2025-10-26", novos_usuarios: 5 }
-  ],
-  distribuicao_geografica: {
-    por_estado: [
-      { estado: "RS", total: 478 },
-      { estado: "SC", total: 312 },
-      { estado: "PR", total: 256 },
-      { estado: "SP", total: 189 },
-      { estado: "MG", total: 134 },
-      { estado: "RJ", total: 87 },
-      { estado: "BA", total: 43 },
-      { estado: "PE", total: 28 },
-      { estado: "GO", total: 20 }
-    ],
-    por_cidade: [
-      { cidade: "Caxias do Sul", estado: "RS", total: 98 },
-      { cidade: "Porto Alegre", estado: "RS", total: 87 },
-      { cidade: "Bento Gonçalves", estado: "RS", total: 72 },
-      { cidade: "Florianópolis", estado: "SC", total: 65 },
-      { cidade: "Curitiba", estado: "PR", total: 58 },
-      { cidade: "Gramado", estado: "RS", total: 54 },
-      { cidade: "Joinville", estado: "SC", total: 49 },
-      { cidade: "Farroupilha", estado: "RS", total: 43 },
-      { cidade: "Blumenau", estado: "SC", total: 41 },
-      { cidade: "Londrina", estado: "PR", total: 38 },
-      { cidade: "Garibaldi", estado: "RS", total: 35 },
-      { cidade: "Passo Fundo", estado: "RS", total: 32 },
-      { cidade: "Maringá", estado: "PR", total: 31 },
-      { cidade: "Canela", estado: "RS", total: 28 },
-      { cidade: "Chapecó", estado: "SC", total: 27 },
-      { cidade: "Campinas", estado: "SP", total: 26 },
-      { cidade: "Belo Horizonte", estado: "MG", total: 25 },
-      { cidade: "Pelotas", estado: "RS", total: 24 },
-      { cidade: "Santa Maria", estado: "RS", total: 22 },
-      { cidade: "Cascavel", estado: "PR", total: 21 }
-    ]
-  },
-  usuarios_recentes: [
-    {
-      id: 1547,
-      nome: "Mariana Costa Silva",
-      tipo_usuario: "produtor",
-      cidade: "Veranópolis",
-      estado: "RS",
-      created_at: "2025-10-26T14:35:22.000000Z"
-    },
-    {
-      id: 1546,
-      nome: "Roberto Ferreira Lima",
-      tipo_usuario: "interessado",
-      cidade: "Nova Petrópolis",
-      estado: "RS",
-      created_at: "2025-10-26T11:20:15.000000Z"
-    },
-    {
-      id: 1545,
-      nome: "Juliana Rodrigues Santos",
-      tipo_usuario: "produtor",
-      cidade: "Flores da Cunha",
-      estado: "RS",
-      created_at: "2025-10-26T09:45:08.000000Z"
-    },
-    {
-      id: 1544,
-      nome: "Fitofarma Indústria e Comércio Ltda",
-      tipo_usuario: "industria",
-      cidade: "Porto Alegre",
-      estado: "RS",
-      created_at: "2025-10-25T16:30:42.000000Z"
-    },
-    {
-      id: 1543,
-      nome: "Carlos Eduardo Alves",
-      tipo_usuario: "produtor",
-      cidade: "São Francisco de Paula",
-      estado: "RS",
-      created_at: "2025-10-25T13:15:28.000000Z"
-    },
-    {
-      id: 1542,
-      nome: "Ana Paula Martins",
-      tipo_usuario: "interessado",
-      cidade: "Gramado",
-      estado: "RS",
-      created_at: "2025-10-25T10:05:17.000000Z"
-    },
-    {
-      id: 1541,
-      nome: "Pedro Henrique Souza",
-      tipo_usuario: "produtor",
-      cidade: "Garibaldi",
-      estado: "RS",
-      created_at: "2025-10-24T17:50:33.000000Z"
-    },
-    {
-      id: 1540,
-      nome: "Bioessência Produtos Naturais S.A.",
-      tipo_usuario: "industria",
-      cidade: "Caxias do Sul",
-      estado: "RS",
-      created_at: "2025-10-24T14:25:51.000000Z"
-    },
-    {
-      id: 1539,
-      nome: "Fernanda Oliveira Costa",
-      tipo_usuario: "produtor",
-      cidade: "Canela",
-      estado: "RS",
-      created_at: "2025-10-24T11:40:29.000000Z"
-    },
-    {
-      id: 1538,
-      nome: "Lucas Gabriel Pereira",
-      tipo_usuario: "interessado",
-      cidade: "Bento Gonçalves",
-      estado: "RS",
-      created_at: "2025-10-23T15:55:44.000000Z"
-    }
-  ]
+// Estado para dados da API
+const usuariosData = ref(null)
+const loading = ref(false)
+const error = ref(null)
+
+// Carregar dados da API
+const loadUsuariosData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const data = await analyticsService.getUsuarios()
+    usuariosData.value = data
+  } catch (err) {
+    console.error('Erro ao carregar dados de usuários:', err)
+    error.value = 'Erro ao carregar os dados. Tente novamente.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Carregar dados ao montar o componente
+onMounted(() => {
+  loadUsuariosData()
 })
 
 // Computed values
 const percentualAtivos = computed(() => {
+  if (!usuariosData.value || !usuariosData.value.totais) return 0
   return Math.round((usuariosData.value.totais.ativos / usuariosData.value.totais.geral) * 100)
 })
 
 const percentualInativos = computed(() => {
+  if (!usuariosData.value || !usuariosData.value.totais) return 0
   return Math.round((usuariosData.value.totais.inativos / usuariosData.value.totais.geral) * 100)
 })
 
@@ -366,13 +250,8 @@ const formatDate = (dateStr) => {
 }
 
 const formatTipoUsuario = (tipo) => {
-  const tipos = {
-    produtor: 'Produtor',
-    industria: 'Indústria',
-    interessado: 'Interessado',
-    admin: 'Admin'
-  }
-  return tipos[tipo] || tipo
+  // Capitaliza a primeira letra
+  return tipo.charAt(0).toUpperCase() + tipo.slice(1)
 }
 
 const getTipoBadgeClass = (tipo) => {
@@ -380,12 +259,15 @@ const getTipoBadgeClass = (tipo) => {
     produtor: 'badge-green',
     industria: 'badge-blue',
     interessado: 'badge-purple',
-    admin: 'badge-red'
+    admin: 'badge-red',
+    pesquisador: 'badge-orange',
+    consumidor: 'badge-teal'
   }
-  return classes[tipo] || 'badge-gray'
+  return classes[tipo.toLowerCase()] || 'badge-gray'
 }
 
 const getProgressWidth = (total) => {
+  if (!usuariosData.value || !usuariosData.value.distribuicao_geografica || !usuariosData.value.distribuicao_geografica.por_estado || usuariosData.value.distribuicao_geografica.por_estado.length === 0) return 0
   const max = Math.max(...usuariosData.value.distribuicao_geografica.por_estado.map(e => e.total))
   return (total / max) * 100
 }
@@ -395,14 +277,10 @@ const formatDateShort = (dateStr) => {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
 }
 
-// Crescimento Chart - Calculate cumulative users
+// Crescimento Chart - Novos usuários por data
 const crescimentoChartOption = computed(() => {
-  let cumulative = 900 // Starting base
-  const cumulativeData = usuariosData.value.crescimento_temporal.map(item => {
-    cumulative += item.novos_usuarios
-    return cumulative
-  })
-
+  if (!usuariosData.value || !usuariosData.value.crescimento_temporal || usuariosData.value.crescimento_temporal.length === 0) return {}
+  
   // Checagem se é mobile
   const isMobile = window.innerWidth <= 768
 
@@ -410,7 +288,7 @@ const crescimentoChartOption = computed(() => {
     tooltip: {
       trigger: 'axis',
       formatter: (params) => {
-        return `${params[0].name}<br/>Usuários Ativos: ${params[0].value}`
+        return `${params[0].name}<br/>Novos Usuários: ${params[0].value}`
       }
     },
     grid: {
@@ -426,13 +304,14 @@ const crescimentoChartOption = computed(() => {
       data: usuariosData.value.crescimento_temporal.map(item => formatDateShort(item.data)),
       axisLabel: {
         fontSize: isMobile ? 8 : 11,
-        interval: isMobile ? 6 : 4,
+        interval: isMobile ? 0 : 'auto',
         rotate: isMobile ? 45 : 0,
         margin: isMobile ? 10 : 8
       }
     },
     yAxis: {
       type: 'value',
+      minInterval: 1,
       axisLabel: {
         formatter: '{value}',
         fontSize: isMobile ? 10 : 11
@@ -440,11 +319,11 @@ const crescimentoChartOption = computed(() => {
     },
     series: [
       {
-        name: 'Usuários Ativos',
+        name: 'Novos Usuários',
         type: 'line',
-        data: cumulativeData,
+        data: usuariosData.value.crescimento_temporal.map(item => item.novos_usuarios),
         smooth: true,
-        itemStyle: { color: '#3b82f6' },
+        itemStyle: { color: '#10b981' },
         lineStyle: { width: isMobile ? 2 : 3 },
         areaStyle: {
           color: {
@@ -454,8 +333,8 @@ const crescimentoChartOption = computed(() => {
             x2: 0,
             y2: 1,
             colorStops: [
-              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
-              { offset: 1, color: 'rgba(59, 130, 246, 0.05)' }
+              { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+              { offset: 1, color: 'rgba(16, 185, 129, 0.05)' }
             ]
           }
         }
@@ -519,6 +398,38 @@ const crescimentoChartOption = computed(() => {
 .dashboard-body {
   padding: 32px;
   flex: 1;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 32px;
+}
+
+.error-state p {
+  font-size: 16px;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  padding: 10px 20px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: #059669;
 }
 
 /* Stats Grid */
@@ -639,6 +550,22 @@ const crescimentoChartOption = computed(() => {
 .chart-container {
   height: 350px;
   width: 100%;
+}
+
+.empty-chart {
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+}
+
+.empty-chart p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* Distribution List */
@@ -829,6 +756,16 @@ const crescimentoChartOption = computed(() => {
 .badge-red {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+.badge-orange {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.badge-teal {
+  background-color: #ccfbf1;
+  color: #115e59;
 }
 
 .badge-gray {

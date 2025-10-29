@@ -10,7 +10,7 @@
         <button class="hamburger-btn" @click="toggleSidebar">
           <Menu :size="24" />
         </button>
-        <h1 class="dashboard-title">Plantas Medicinais</h1>
+        <h1 class="dashboard-title">Visão Geral</h1>
         <LogoutButton />
       </header>
 
