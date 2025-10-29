@@ -16,35 +16,41 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-body">
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-          <!-- Total de Usuários -->
-          <div class="stat-card">
-            <p class="stat-label">Total de Usuários</p>
-            <p class="stat-value">{{ dashboardData.usuarios.total.toLocaleString('pt-BR') }}</p>
-            <p class="stat-trend positive">
-              <TrendingUp :size="16" />
-              +{{ dashboardData.usuarios.crescimento_30_dias }}% nos últimos 30 dias
-            </p>
-          </div>
+        <!-- Loading State -->
+        <LoadingSpinner v-if="loading" text="Carregando dashboard..." />
 
-          <!-- Usuários Ativos -->
-          <div class="stat-card">
-            <p class="stat-label">Usuários Ativos</p>
-            <p class="stat-value">{{ dashboardData.usuarios.ativos.toLocaleString('pt-BR') }}</p>
-            <p class="stat-trend positive">
-              <TrendingUp :size="16" />
-              +8,2% nos últimos 30 dias
-            </p>
-          </div>
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+          <button @click="loadDashboardData" class="retry-btn">Tentar novamente</button>
+        </div>
 
-          <!-- Crescimento -->
+        <!-- Data Content -->
+        <div v-else-if="dashboardData">
+          <!-- Stats Cards -->
+          <div class="stats-grid">
+            <!-- Total de Usuários -->
+            <div class="stat-card">
+              <p class="stat-label">Total de Usuários</p>
+              <p class="stat-value">{{ dashboardData.usuarios.total.toLocaleString('pt-BR') }}</p>
+            </div>
+
+            <!-- Usuários Ativos -->
+            <div class="stat-card">
+              <p class="stat-label">Usuários Ativos</p>
+              <p class="stat-value">{{ dashboardData.usuarios.ativos.toLocaleString('pt-BR') }}</p>
+            </div>
+
+          <!-- Novos Usuários (30d) -->
           <div class="stat-card">
-            <p class="stat-label">Crescimento (30d)</p>
-            <p class="stat-value">{{ (dashboardData.usuarios.total - dashboardData.usuarios.ativos).toLocaleString('pt-BR') }}</p>
-            <p class="stat-trend negative">
-              <TrendingDown :size="16" />
-              -3,1% nos últimos 30 dias
+            <p class="stat-label">Novos Usuários (30d)</p>
+            <p class="stat-value">{{ dashboardData.usuarios.crescimento_30_dias.novos_usuarios.toLocaleString('pt-BR') }}</p>
+            <p 
+              :class="['stat-trend', dashboardData.usuarios.crescimento_30_dias.percentual >= 0 ? 'positive' : 'negative']"
+            >
+              <TrendingUp v-if="dashboardData.usuarios.crescimento_30_dias.percentual >= 0" :size="16" />
+              <TrendingDown v-else :size="16" />
+              {{ dashboardData.usuarios.crescimento_30_dias.percentual >= 0 ? '+' : '' }}{{ dashboardData.usuarios.crescimento_30_dias.percentual }}% de crescimento
             </p>
           </div>
         </div>
@@ -72,10 +78,11 @@
             <div class="estado-list">
               <div v-for="estado in dashboardData.distribuicao_geografica.slice(0, 5)" :key="estado.estado" class="estado-item">
                 <span class="estado-nome">{{ estado.estado }}</span>
-                <span class="estado-usuarios">{{ estado.usuarios }}</span>
+                <span class="estado-usuarios">{{ estado.total }}</span>
               </div>
             </div>
           </div>
+        </div>
         </div>
       </div>
     </main>
@@ -83,7 +90,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -92,6 +99,8 @@ import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from
 import { TrendingUp, TrendingDown, Menu } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import LogoutButton from '../components/LogoutButton.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import { analyticsService } from '@/services'
 
 // Register ECharts components
 use([CanvasRenderer, PieChart, BarChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent])
@@ -105,115 +114,124 @@ const toggleSidebar = () => {
   }
 }
 
-// Mock data
-const dashboardData = ref({
-  usuarios: {
-    total: 1243,
-    ativos: 1107,
-    por_tipo: {
-      produtor: 678,
-      industria: 245,
-      pesquisador: 189,
-      administrador: 131
-    },
-    crescimento_30_dias: 8.4
-  },
-  producao: {
-    total_plantas: 312,
-    produtores_ativos: 678,
-    industrias_ativas: 245,
-    producao_estimada_total: 48250
-  },
-  conteudo: {
-    artigos_ativos: 47,
-    cursos_ativos: 12,
-    eventos_ativos: 6
-  },
-  top_plantas: [
-    { nome: "Camomila", acessos: 1847, producao_media_kg: 2340 },
-    { nome: "Erva-doce", acessos: 1523, producao_media_kg: 1890 },
-    { nome: "Alecrim", acessos: 1402, producao_media_kg: 1650 },
-    { nome: "Hortelã", acessos: 1298, producao_media_kg: 2100 },
-    { nome: "Capim-limão", acessos: 1156, producao_media_kg: 1420 }
-  ],
-  distribuicao_geografica: [
-    { estado: "SP", usuarios: 342 },
-    { estado: "MG", usuarios: 287 },
-    { estado: "RJ", usuarios: 198 },
-    { estado: "PR", usuarios: 156 },
-    { estado: "RS", usuarios: 134 },
-    { estado: "BA", usuarios: 126 }
-  ]
+// Estado para dados da API
+const dashboardData = ref(null)
+const loading = ref(false)
+const error = ref(null)
+
+// Carregar dados da API
+const loadDashboardData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const data = await analyticsService.getOverview()
+    dashboardData.value = data
+  } catch (err) {
+    console.error('Erro ao carregar dados do dashboard:', err)
+    error.value = 'Erro ao carregar os dados. Tente novamente.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Carregar dados ao montar o componente
+onMounted(() => {
+  loadDashboardData()
 })
 
 // User Type Donut Chart
-const userTypeChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'item',
-    formatter: '{b}: {c} ({d}%)'
-  },
-  legend: {
-    bottom: 0,
-    left: 'center'
-  },
-  series: [
-    {
-      type: 'pie',
-      radius: ['50%', '70%'],
-      avoidLabelOverlap: false,
-      label: {
-        show: false
-      },
-      labelLine: {
-        show: false
-      },
-      data: [
-        { value: dashboardData.value.usuarios.por_tipo.produtor, name: 'Produtor', itemStyle: { color: '#10b981' } },
-        { value: dashboardData.value.usuarios.por_tipo.industria, name: 'Consumidor', itemStyle: { color: '#3b82f6' } },
-        { value: dashboardData.value.usuarios.por_tipo.pesquisador, name: 'Especialista', itemStyle: { color: '#ef4444' } },
-        { value: dashboardData.value.usuarios.por_tipo.administrador, name: 'Pesquisador', itemStyle: { color: '#f59e0b' } }
-      ]
+const userTypeChartOption = computed(() => {
+  if (!dashboardData.value || !dashboardData.value.usuarios || !dashboardData.value.usuarios.por_tipo) return {}
+  
+  // Cores para diferentes tipos de usuário
+  const colors = {
+    'produtor': '#10b981',
+    'admin': '#3b82f6',
+    'industria': '#ef4444',
+    'pesquisador': '#f59e0b',
+    'consumidor': '#8b5cf6',
+    'especialista': '#ec4899'
+  }
+  
+  // Converter objeto por_tipo em array dinâmico
+  const userTypesData = Object.entries(dashboardData.value.usuarios.por_tipo).map(([tipo, valor], index) => ({
+    value: valor,
+    name: tipo.charAt(0).toUpperCase() + tipo.slice(1), // Capitaliza primeira letra
+    itemStyle: { 
+      color: colors[tipo.toLowerCase()] || `hsl(${index * 60}, 70%, 50%)` // Cor padrão se não estiver definida
     }
-  ]
-}))
+  }))
+  
+  return {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{b}: {c} ({d}%)'
+    },
+    legend: {
+      bottom: 0,
+      left: 'center'
+    },
+    series: [
+      {
+        type: 'pie',
+        radius: ['50%', '70%'],
+        avoidLabelOverlap: false,
+        label: {
+          show: false
+        },
+        labelLine: {
+          show: false
+        },
+        data: userTypesData
+      }
+    ]
+  }
+})
 
 // Top Plants Bar Chart
-const topPlantsChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: {
-      type: 'shadow'
-    }
-  },
-  grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    containLabel: true
-  },
-  xAxis: {
-    type: 'value',
-    show: false
-  },
-  yAxis: {
-    type: 'category',
-    data: dashboardData.value.top_plantas.map(p => p.nome).reverse(),
-    axisLine: { show: false },
-    axisTick: { show: false }
-  },
-  series: [
-    {
-      type: 'bar',
-      data: dashboardData.value.top_plantas.map((p, i) => ({
-        value: p.acessos,
-        itemStyle: {
-          color: ['#10b981', '#3b82f6', '#a3a3a3', '#6366f1', '#84cc16'][4 - i]
-        }
-      })).reverse(),
-      barWidth: '60%'
-    }
-  ]
-}))
+const topPlantsChartOption = computed(() => {
+  if (!dashboardData.value || !dashboardData.value.top_plantas || dashboardData.value.top_plantas.length === 0) {
+    return {}
+  }
+  
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      show: false
+    },
+    yAxis: {
+      type: 'category',
+      data: dashboardData.value.top_plantas.map(p => p.nome).reverse(),
+      axisLine: { show: false },
+      axisTick: { show: false }
+    },
+    series: [
+      {
+        type: 'bar',
+        data: dashboardData.value.top_plantas.map((p, i) => ({
+          value: p.acessos,
+          itemStyle: {
+            color: ['#10b981', '#3b82f6', '#a3a3a3', '#6366f1', '#84cc16'][4 - i]
+          }
+        })).reverse(),
+        barWidth: '60%'
+      }
+    ]
+  }
+})
 </script>
 
 <style scoped>
@@ -314,6 +332,38 @@ const topPlantsChartOption = computed(() => ({
 .dashboard-body {
   padding: 32px;
   flex: 1;
+}
+
+/* Error States */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 32px;
+}
+
+.error-state p {
+  font-size: 16px;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  padding: 10px 20px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: #059669;
 }
 
 /* Stats Grid */
