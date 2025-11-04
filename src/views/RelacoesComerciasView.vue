@@ -16,13 +16,27 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-body">
+        <!-- Loading State -->
+        <LoadingSpinner v-if="loading" text="Carregando dados de relacionamentos..." />
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+          <button @click="loadRelacoesData" class="retry-btn">Tentar Novamente</button>
+        </div>
+
+        <!-- Data Loaded -->
+        <div v-else>
         <!-- Top Section: Interesses e Indústrias -->
         <div class="two-column-grid">
           <!-- Interesses Mais Populares -->
           <div class="chart-card">
             <h3 class="section-title">Interesses Mais Populares</h3>
             <p class="section-description">Tendências de interesse entre utilizadores e parceiros.</p>
-            <v-chart :option="interessesChartOption" class="chart-container" />
+            <v-chart v-if="relacoesData.interesses.mais_populares.length > 0" :option="interessesChartOption" class="chart-container" />
+            <div v-else class="empty-state">
+              <p>Nenhum interesse registrado</p>
+            </div>
           </div>
 
           <!-- Indústrias e Interesses -->
@@ -30,7 +44,7 @@
             <h3 class="section-title">Indústrias e Interesses</h3>
             <p class="section-description">As indústrias e os seus principais interesses.</p>
             
-            <div class="industries-list">
+            <div v-if="industriasAgrupadas.length > 0" class="industries-list">
               <div v-for="(industria, index) in industriasAgrupadas" :key="index" class="industry-item">
                 <h4 class="industry-name">{{ industria.nome }}</h4>
                 <div class="tags-container">
@@ -39,6 +53,9 @@
                   </span>
                 </div>
               </div>
+            </div>
+            <div v-else class="empty-state-small">
+              <p>Nenhuma indústria com interesses registrados</p>
             </div>
           </div>
         </div>
@@ -50,7 +67,7 @@
             <h3 class="section-title">Lista de Produtores</h3>
             <p class="section-description">Visão detalhada dos nossos parceiros produtores.</p>
             
-            <div class="table-container">
+            <div v-if="produtoresAgrupados.length > 0" class="table-container">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -68,6 +85,9 @@
                 </tbody>
               </table>
             </div>
+            <div v-else class="empty-state-small">
+              <p>Nenhum produtor registrado</p>
+            </div>
           </div>
 
           <!-- Distribuição de Produtores -->
@@ -75,7 +95,7 @@
             <h3 class="section-title">Distribuição de Produtores</h3>
             <p class="section-description">Localização geográfica dos produtores no Brasil.</p>
             
-            <div class="distribution-list">
+            <div v-if="distribuicaoCidades.length > 0" class="distribution-list">
               <div v-for="(cidade, index) in distribuicaoCidades" :key="index" class="distribution-item">
                 <div class="distribution-info">
                   <MapPin :size="20" class="location-icon" />
@@ -89,7 +109,11 @@
                 </div>
               </div>
             </div>
+            <div v-else class="empty-state-small">
+              <p>Nenhuma distribuição disponível</p>
+            </div>
           </div>
+        </div>
         </div>
       </div>
     </main>
@@ -97,7 +121,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -106,6 +130,8 @@ import { TitleComponent, TooltipComponent, GridComponent } from 'echarts/compone
 import { Menu, MapPin } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import LogoutButton from '../components/LogoutButton.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import { analyticsService } from '@/services'
 
 // Register ECharts components
 use([CanvasRenderer, BarChart, TitleComponent, TooltipComponent, GridComponent])
@@ -119,62 +145,39 @@ const toggleSidebar = () => {
   }
 }
 
-// Mock data
+// Loading and error states
+const loading = ref(true)
+const error = ref(null)
+
+// Data
 const relacoesData = ref({
   interesses: {
-    mais_populares: [
-      { descricao: "Plantas Aromáticas", total_usuarios: 45 },
-      { descricao: "Plantas Medicinais", total_usuarios: 38 },
-      { descricao: "Óleos Essenciais", total_usuarios: 32 },
-      { descricao: "Fitoterápicos", total_usuarios: 28 },
-      { descricao: "Cosméticos Naturais", total_usuarios: 24 },
-      { descricao: "Chás e Infusões", total_usuarios: 22 },
-      { descricao: "Temperos e Condimentos", total_usuarios: 19 },
-      { descricao: "Plantas Ornamentais", total_usuarios: 15 },
-      { descricao: "Agricultura Orgânica", total_usuarios: 12 },
-      { descricao: "Extratos Vegetais", total_usuarios: 10 }
-    ]
+    mais_populares: []
   },
   matching_potencial: {
-    industrias_com_interesses: [
-      { nome: "Naturalis Cosméticos Ltda", interesse: "Óleos Essenciais" },
-      { nome: "Naturalis Cosméticos Ltda", interesse: "Plantas Aromáticas" },
-      { nome: "Naturalis Cosméticos Ltda", interesse: "Cosméticos Naturais" },
-      { nome: "FitoSaúde Laboratórios", interesse: "Plantas Medicinais" },
-      { nome: "FitoSaúde Laboratórios", interesse: "Fitoterápicos" },
-      { nome: "Aromas do Vale Indústria", interesse: "Plantas Aromáticas" },
-      { nome: "Aromas do Vale Indústria", interesse: "Óleos Essenciais" },
-      { nome: "Aromas do Vale Indústria", interesse: "Extratos Vegetais" },
-      { nome: "Chá & Cia Indústria", interesse: "Chás e Infusões" },
-      { nome: "Chá & Cia Indústria", interesse: "Plantas Medicinais" },
-      { nome: "Essência Natural S.A.", interesse: "Óleos Essenciais" },
-      { nome: "Essência Natural S.A.", interesse: "Cosméticos Naturais" },
-      { nome: "Verde Vida Produtos Naturais", interesse: "Fitoterápicos" },
-      { nome: "Verde Vida Produtos Naturais", interesse: "Plantas Medicinais" },
-      { nome: "Sabor da Terra Temperos", interesse: "Temperos e Condimentos" },
-      { nome: "Sabor da Terra Temperos", interesse: "Plantas Aromáticas" },
-      { nome: "BioEssência Laboratórios", interesse: "Extratos Vegetais" },
-      { nome: "BioEssência Laboratórios", interesse: "Plantas Medicinais" }
-    ],
-    produtores_com_plantas: [
-      { nome: "João da Silva", cidade: "Caxias do Sul", estado: "RS", nome_popular: "Alecrim", producao_est: 350 },
-      { nome: "João da Silva", cidade: "Caxias do Sul", estado: "RS", nome_popular: "Lavanda", producao_est: 280 },
-      { nome: "Maria Oliveira", cidade: "Bento Gonçalves", estado: "RS", nome_popular: "Hortelã", producao_est: 420 },
-      { nome: "Maria Oliveira", cidade: "Bento Gonçalves", estado: "RS", nome_popular: "Manjericão", producao_est: 310 },
-      { nome: "Pedro Santos", cidade: "Farroupilha", estado: "RS", nome_popular: "Camomila", producao_est: 180 },
-      { nome: "Pedro Santos", cidade: "Farroupilha", estado: "RS", nome_popular: "Erva-cidreira", producao_est: 220 },
-      { nome: "Ana Costa", cidade: "Gramado", estado: "RS", nome_popular: "Lavanda", producao_est: 450 },
-      { nome: "Ana Costa", cidade: "Gramado", estado: "RS", nome_popular: "Alecrim", producao_est: 380 },
-      { nome: "Carlos Pereira", cidade: "Nova Petrópolis", estado: "RS", nome_popular: "Sálvia", producao_est: 160 },
-      { nome: "Carlos Pereira", cidade: "Nova Petrópolis", estado: "RS", nome_popular: "Tomilho", producao_est: 140 },
-      { nome: "Fernanda Lima", cidade: "Canela", estado: "RS", nome_popular: "Calêndula", producao_est: 200 },
-      { nome: "Fernanda Lima", cidade: "Canela", estado: "RS", nome_popular: "Arnica", producao_est: 95 },
-      { nome: "Roberto Souza", cidade: "São Francisco de Paula", estado: "RS", nome_popular: "Boldo", producao_est: 175 },
-      { nome: "Roberto Souza", cidade: "São Francisco de Paula", estado: "RS", nome_popular: "Guaco", producao_est: 130 },
-      { nome: "Juliana Martins", cidade: "Flores da Cunha", estado: "RS", nome_popular: "Eucalipto", producao_est: 520 },
-      { nome: "Juliana Martins", cidade: "Flores da Cunha", estado: "RS", nome_popular: "Capim-limão", producao_est: 290 }
-    ]
+    industrias_com_interesses: [],
+    produtores_com_plantas: []
   }
+})
+
+// Load data from API
+const loadRelacoesData = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    const response = await analyticsService.getRelacionamentos()
+    relacoesData.value = response
+  } catch (err) {
+    console.error('Erro ao carregar dados de relacionamentos:', err)
+    error.value = 'Erro ao carregar dados. Tente novamente.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Load data on mount
+onMounted(() => {
+  loadRelacoesData()
 })
 
 // Computed: Agrupar indústrias por nome
@@ -541,6 +544,73 @@ const interessesChartOption = computed(() => {
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Empty States */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin-top: 16px;
+}
+
+.empty-state p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+.empty-state-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin-top: 16px;
+}
+
+.empty-state-small p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 16px;
+}
+
+.error-state p {
+  color: #ef4444;
+  font-size: 16px;
+  margin: 0;
+}
+
+.retry-btn {
+  padding: 10px 20px;
+  background-color: #10b981;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover {
+  background-color: #059669;
 }
 
 /* Responsive */

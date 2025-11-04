@@ -17,6 +17,17 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-body">
+        <!-- Loading State -->
+        <LoadingSpinner v-if="loading" text="Carregando dados de produção..." />
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+          <button @click="loadProducaoData" class="retry-btn">Tentar novamente</button>
+        </div>
+
+        <!-- Data Content -->
+        <div v-else-if="producaoData">
         <!-- Stats Cards -->
         <div class="stats-grid">
           <!-- Total de Plantas Ativas -->
@@ -50,7 +61,10 @@
           <div class="chart-card">
             <h3 class="chart-title">Top 10 Plantas Mais Cultivadas</h3>
             <p class="chart-description">Volume de produção estimado.</p>
-            <v-chart :option="topPlantasChartOption" class="chart-container-large" />
+            <v-chart v-if="producaoData.producao_estimada.por_planta && producaoData.producao_estimada.por_planta.length > 0" :option="topPlantasChartOption" class="chart-container-large" />
+            <div v-else class="empty-state">
+              <p>Sem dados de produção disponíveis</p>
+            </div>
           </div>
         </div>
 
@@ -61,7 +75,7 @@
             <h3 class="table-title">Produção Estimada por Planta</h3>
             <p class="table-description">Detalhes da produção e status atual.</p>
             
-            <div class="table-container">
+            <div v-if="producaoData.producao_estimada.por_planta && producaoData.producao_estimada.por_planta.length > 0" class="table-container">
               <table class="data-table">
                 <thead>
                   <tr>
@@ -85,6 +99,9 @@
                 </tbody>
               </table>
             </div>
+            <div v-else class="empty-state">
+              <p>Sem dados de produção estimada</p>
+            </div>
           </div>
 
           <!-- Entregas Agendadas -->
@@ -92,7 +109,7 @@
             <h3 class="table-title">Entregas Agendadas (Próximos 30 Dias)</h3>
             <p class="table-description">Próximas remessas de produção.</p>
             
-            <div class="deliveries-list">
+            <div v-if="producaoData.cronograma_entregas && producaoData.cronograma_entregas.length > 0" class="deliveries-list">
               <div v-for="entrega in producaoData.cronograma_entregas" :key="entrega.planta.id" class="delivery-item">
                 <div class="delivery-icon">
                   <Package :size="20" />
@@ -104,7 +121,11 @@
                 <span class="status-badge agendado">agendado</span>
               </div>
             </div>
+            <div v-else class="empty-state">
+              <p>Nenhuma entrega agendada</p>
+            </div>
           </div>
+        </div>
         </div>
       </div>
     </main>
@@ -112,7 +133,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -121,6 +142,8 @@ import { TitleComponent, TooltipComponent, GridComponent } from 'echarts/compone
 import { Sprout, Package, Menu } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import LogoutButton from '../components/LogoutButton.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import { analyticsService } from '@/services'
 
 // Register ECharts components
 use([CanvasRenderer, BarChart, TitleComponent, TooltipComponent, GridComponent])
@@ -134,85 +157,30 @@ const toggleSidebar = () => {
   }
 }
 
-// Mock data
-const producaoData = ref({
-  plantas: {
-    total_cadastradas: 125,
-    ativas: 1250,
-    mais_cultivadas: [
-      { nome_popular: "Soja", nome_cientifico: "Glycine max", produtores: 320, hectares_totais: 54000 },
-      { nome_popular: "Milho", nome_cientifico: "Zea mays", produtores: 270, hectares_totais: 48000 },
-      { nome_popular: "Trigo", nome_cientifico: "Triticum aestivum", produtores: 150, hectares_totais: 23000 },
-      { nome_popular: "Cana-de-açúcar", nome_cientifico: "Saccharum officinarum", produtores: 90, hectares_totais: 18000 },
-      { nome_popular: "Girassol", nome_cientifico: "Helianthus annuus", produtores: 65, hectares_totais: 9500 },
-      { nome_popular: "Arroz", nome_cientifico: "Oryza sativa", produtores: 120, hectares_totais: 12000 },
-      { nome_popular: "Feijão", nome_cientifico: "Phaseolus vulgaris", produtores: 100, hectares_totais: 8500 },
-      { nome_popular: "Algodão", nome_cientifico: "Gossypium hirsutum", produtores: 40, hectares_totais: 6000 },
-      { nome_popular: "Café", nome_cientifico: "Coffea arabica", produtores: 85, hectares_totais: 7200 },
-      { nome_popular: "Mandioca", nome_cientifico: "Manihot esculenta", produtores: 50, hectares_totais: 5000 }
-    ],
-    com_producao_estimada: 680
-  },
-  producao_estimada: {
-    total: 1250000,
-    por_planta: [
-      { nome_popular: "Milho", nome_cientifico: "Zea mays", producao_total: 350000, produtores: 270 },
-      { nome_popular: "Soja", nome_cientifico: "Glycine max", producao_total: 300000, produtores: 320 },
-      { nome_popular: "Trigo", nome_cientifico: "Triticum aestivum", producao_total: 150000, produtores: 150 },
-      { nome_popular: "Arroz", nome_cientifico: "Oryza sativa", producao_total: 120000, produtores: 120 },
-      { nome_popular: "Cana-de-açúcar", nome_cientifico: "Saccharum officinarum", producao_total: 90000, produtores: 90 },
-      { nome_popular: "Batata", nome_cientifico: "Solanum tuberosum", producao_total: 70000, produtores: 80 },
-      { nome_popular: "Café", nome_cientifico: "Coffea arabica", producao_total: 60000, produtores: 85 },
-      { nome_popular: "Tomate", nome_cientifico: "Solanum lycopersicum", producao_total: 50000, produtores: 70 },
-      { nome_popular: "Cenoura", nome_cientifico: "Daucus carota", producao_total: 40000, produtores: 60 },
-      { nome_popular: "Algodão", nome_cientifico: "Gossypium hirsutum", producao_total: 20000, produtores: 40 }
-    ]
-  },
-  cronograma_entregas: [
-    {
-      planta: { id: 2, nome_popular: "Milho" },
-      usuario: { id: 108, nome: "Armazém Central" },
-      producao_est: 20000,
-      data_entrega_est: "2025-11-08"
-    },
-    {
-      planta: { id: 1, nome_popular: "Soja" },
-      usuario: { id: 101, nome: "Fábrica de Processamento" },
-      producao_est: 15000,
-      data_entrega_est: "2025-11-10"
-    },
-    {
-      planta: { id: 3, nome_popular: "Trigo" },
-      usuario: { id: 115, nome: "Distribuidora A" },
-      producao_est: 10000,
-      data_entrega_est: "2025-11-12"
-    },
-    {
-      planta: { id: 4, nome_popular: "Batata" },
-      usuario: { id: 122, nome: "Mercado Local" },
-      producao_est: 5000,
-      data_entrega_est: "2025-11-15"
-    },
-    {
-      planta: { id: 5, nome_popular: "Arroz" },
-      usuario: { id: 130, nome: "Destilaria" },
-      producao_est: 10000,
-      data_entrega_est: "2025-11-18"
-    },
-    {
-      planta: { id: 6, nome_popular: "Cana-de-açúcar" },
-      usuario: { id: 135, nome: "Destilaria" },
-      producao_est: 8000,
-      data_entrega_est: "2025-11-20"
-    }
-  ],
-  produtores_por_estado: [
-    { estado: "RS", total_produtores: 180 },
-    { estado: "PR", total_produtores: 150 },
-    { estado: "SP", total_produtores: 120 },
-    { estado: "MG", total_produtores: 95 },
-    { estado: "MT", total_produtores: 70 }
-  ]
+// Estado para dados da API
+const producaoData = ref(null)
+const loading = ref(false)
+const error = ref(null)
+
+// Carregar dados da API
+const loadProducaoData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const data = await analyticsService.getProducao()
+    producaoData.value = data
+  } catch (err) {
+    console.error('Erro ao carregar dados de produção:', err)
+    error.value = 'Erro ao carregar os dados. Tente novamente.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Carregar dados ao montar o componente
+onMounted(() => {
+  loadProducaoData()
 })
 
 // Helper functions
@@ -262,51 +230,55 @@ const formatDate = (dateStr) => {
 }
 
 // Top Plantas Bar Chart
-const topPlantasChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'axis',
-    axisPointer: {
-      type: 'shadow'
-    },
-    formatter: (params) => {
-      return `${params[0].name}: ${(params[0].value / 1000).toFixed(0)} Toneladas`
-    }
-  },
-  grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '3%',
-    top: '3%',
-    containLabel: true
-  },
-  xAxis: {
-    type: 'value',
-    show: true,
-    axisLabel: {
-      formatter: (value) => `${(value / 1000).toFixed(0)}`
-    }
-  },
-  yAxis: {
-    type: 'category',
-    data: producaoData.value.producao_estimada.por_planta.map(p => p.nome_popular).reverse(),
-    axisLine: { show: false },
-    axisTick: { show: false }
-  },
-  series: [
-    {
-      name: 'Produção (toneladas)',
-      type: 'bar',
-      data: producaoData.value.producao_estimada.por_planta.map(p => ({
-        value: p.producao_total,
-        itemStyle: { color: '#10b981' }
-      })).reverse(),
-      barWidth: '50%',
-      label: {
-        show: false
+const topPlantasChartOption = computed(() => {
+  if (!producaoData.value || !producaoData.value.producao_estimada || !producaoData.value.producao_estimada.por_planta || producaoData.value.producao_estimada.por_planta.length === 0) return {}
+  
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'shadow'
+      },
+      formatter: (params) => {
+        return `${params[0].name}: ${(params[0].value / 1000).toFixed(0)} Toneladas`
       }
-    }
-  ]
-}))
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'value',
+      show: true,
+      axisLabel: {
+        formatter: (value) => `${(value / 1000).toFixed(0)}`
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: producaoData.value.producao_estimada.por_planta.map(p => p.nome_popular).reverse(),
+      axisLine: { show: false },
+      axisTick: { show: false }
+    },
+    series: [
+      {
+        name: 'Produção (toneladas)',
+        type: 'bar',
+        data: producaoData.value.producao_estimada.por_planta.map(p => ({
+          value: p.producao_total,
+          itemStyle: { color: '#10b981' }
+        })).reverse(),
+        barWidth: '50%',
+        label: {
+          show: false
+        }
+      }
+    ]
+  }
+})
 </script>
 
 <style scoped>
@@ -365,6 +337,38 @@ const topPlantasChartOption = computed(() => ({
 .dashboard-body {
   padding: 32px;
   flex: 1;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 32px;
+}
+
+.error-state p {
+  font-size: 16px;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  padding: 10px 20px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: #059669;
 }
 
 /* Stats Grid */
@@ -451,6 +455,24 @@ const topPlantasChartOption = computed(() => ({
 .chart-container-large {
   height: 400px;
   width: 100%;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin-top: 16px;
+}
+
+.empty-state p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* Two Column Grid */

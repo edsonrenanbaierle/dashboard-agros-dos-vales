@@ -16,6 +16,17 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-body">
+        <!-- Loading State -->
+        <LoadingSpinner v-if="loading" text="Carregando dados de plantas..." />
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+          <button @click="loadPlantasData" class="retry-btn">Tentar novamente</button>
+        </div>
+
+        <!-- Data Content -->
+        <div v-else-if="plantasData">
         <!-- Stats Cards -->
         <div class="stats-grid">
           <!-- Total de Plantas -->
@@ -42,8 +53,12 @@
           <div class="chart-card">
             <h3 class="chart-title">Top 10 Indicações Terapêuticas Mais Usadas</h3>
             <p class="chart-description">Número de usos</p>
-            <v-chart :option="indicacoesChartOption" class="chart-container-large" />
+            <v-chart v-if="plantasData.indicacoes.mais_usadas && plantasData.indicacoes.mais_usadas.length > 0" :option="indicacoesChartOption" class="chart-container-large" />
+            <div v-else class="empty-state">
+              <p>Sem dados de indicações disponíveis</p>
+            </div>
           </div>
+        </div>
         </div>
       </div>
     </main>
@@ -51,7 +66,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -60,6 +75,8 @@ import { TitleComponent, TooltipComponent, GridComponent } from 'echarts/compone
 import { Menu } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import LogoutButton from '../components/LogoutButton.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import { analyticsService } from '@/services'
 
 // Register ECharts components
 use([CanvasRenderer, BarChart, TitleComponent, TooltipComponent, GridComponent])
@@ -73,53 +90,42 @@ const toggleSidebar = () => {
   }
 }
 
-// Mock data
-const plantasData = ref({
-  plantas: {
-    total: 127,
-    ativas: 115,
-    com_contraindicacao: 23,
-    sem_imagem: 18
-  },
-  indicacoes: {
-    total: 45,
-    mais_usadas: [
-      { descricao: "Digestivo", total_plantas: 28 },
-      { descricao: "Anti-inflamatório", total_plantas: 24 },
-      { descricao: "Calmante", total_plantas: 22 },
-      { descricao: "Antioxidante", total_plantas: 19 },
-      { descricao: "Diurético", total_plantas: 17 },
-      { descricao: "Expectorante", total_plantas: 15 },
-      { descricao: "Cicatrizante", total_plantas: 13 },
-      { descricao: "Analgésico", total_plantas: 12 },
-      { descricao: "Antibacteriano", total_plantas: 10 },
-      { descricao: "Estimulante", total_plantas: 8 }
-    ]
-  },
-  plantas_mais_indicadas: [
-    { nome_popular: "Alecrim", nome_cientifico: "Rosmarinus officinalis", total_indicacoes: 8 },
-    { nome_popular: "Hortelã", nome_cientifico: "Mentha piperita", total_indicacoes: 7 },
-    { nome_popular: "Camomila", nome_cientifico: "Matricaria chamomilla", total_indicacoes: 6 },
-    { nome_popular: "Gengibre", nome_cientifico: "Zingiber officinale", total_indicacoes: 6 },
-    { nome_popular: "Manjericão", nome_cientifico: "Ocimum basilicum", total_indicacoes: 5 },
-    { nome_popular: "Lavanda", nome_cientifico: "Lavandula angustifolia", total_indicacoes: 5 },
-    { nome_popular: "Erva-cidreira", nome_cientifico: "Melissa officinalis", total_indicacoes: 5 },
-    { nome_popular: "Boldo", nome_cientifico: "Peumus boldus", total_indicacoes: 4 },
-    { nome_popular: "Calêndula", nome_cientifico: "Calendula officinalis", total_indicacoes: 4 },
-    { nome_popular: "Eucalipto", nome_cientifico: "Eucalyptus globulus", total_indicacoes: 4 },
-    { nome_popular: "Sálvia", nome_cientifico: "Salvia officinalis", total_indicacoes: 3 },
-    { nome_popular: "Guaco", nome_cientifico: "Mikania glomerata", total_indicacoes: 3 },
-    { nome_popular: "Capim-limão", nome_cientifico: "Cymbopogon citratus", total_indicacoes: 3 },
-    { nome_popular: "Arnica", nome_cientifico: "Arnica montana", total_indicacoes: 2 },
-    { nome_popular: "Babosa", nome_cientifico: "Aloe vera", total_indicacoes: 2 }
-  ]
+// Estado para dados da API
+const plantasData = ref(null)
+const loading = ref(false)
+const error = ref(null)
+
+// Carregar dados da API
+const loadPlantasData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const data = await analyticsService.getPlantas()
+    plantasData.value = data
+  } catch (err) {
+    console.error('Erro ao carregar dados de plantas:', err)
+    error.value = 'Erro ao carregar os dados. Tente novamente.'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Carregar dados ao montar o componente
+onMounted(() => {
+  loadPlantasData()
 })
 
 // Top Indicações Bar Chart
 const indicacoesChartOption = computed(() => {
+  if (!plantasData.value || !plantasData.value.indicacoes || !plantasData.value.indicacoes.mais_usadas || plantasData.value.indicacoes.mais_usadas.length === 0) return {}
+  
   // Calcular o valor máximo arredondado para cima
   const maxValue = Math.max(...plantasData.value.indicacoes.mais_usadas.map(i => i.total_plantas))
   const maxRounded = Math.ceil(maxValue / 10) * 10
+
+  // Checagem se é mobile
+  const isMobile = window.innerWidth <= 768
 
   return {
     tooltip: {
@@ -132,10 +138,10 @@ const indicacoesChartOption = computed(() => {
       }
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '3%',
+      left: isMobile ? '5%' : '3%',
+      right: isMobile ? '5%' : '4%',
+      bottom: isMobile ? '3%' : '3%',
+      top: isMobile ? '3%' : '3%',
       containLabel: true
     },
     xAxis: {
@@ -143,32 +149,35 @@ const indicacoesChartOption = computed(() => {
       show: true,
       max: maxRounded,
       axisLabel: {
-        formatter: '{value}'
+        formatter: '{value}',
+        fontSize: isMobile ? 10 : 11
       }
     },
-  yAxis: {
-    type: 'category',
-    data: plantasData.value.indicacoes.mais_usadas.map(i => i.descricao).reverse(),
-    axisLine: { show: false },
-    axisTick: { show: false },
-    axisLabel: {
-      fontSize: 13
-    }
-  },
-  series: [
-    {
-      name: 'Número de usos',
-      type: 'bar',
-      data: plantasData.value.indicacoes.mais_usadas.map(i => ({
-        value: i.total_plantas,
-        itemStyle: { color: '#10b981' }
-      })).reverse(),
-      barWidth: '60%',
-      label: {
-        show: false
+    yAxis: {
+      type: 'category',
+      data: plantasData.value.indicacoes.mais_usadas.map(i => i.descricao).reverse(),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: {
+        fontSize: isMobile ? 11 : 13,
+        overflow: 'truncate',
+        width: isMobile ? 120 : 200
       }
-    }
-  ]
+    },
+    series: [
+      {
+        name: 'Número de usos',
+        type: 'bar',
+        data: plantasData.value.indicacoes.mais_usadas.map(i => ({
+          value: i.total_plantas,
+          itemStyle: { color: '#10b981' }
+        })).reverse(),
+        barWidth: '60%',
+        label: {
+          show: false
+        }
+      }
+    ]
   }
 })
 </script>
@@ -227,6 +236,38 @@ const indicacoesChartOption = computed(() => {
 .dashboard-body {
   padding: 32px;
   flex: 1;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 32px;
+}
+
+.error-state p {
+  font-size: 16px;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  padding: 10px 20px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: #059669;
 }
 
 /* Stats Grid */
@@ -289,6 +330,24 @@ const indicacoesChartOption = computed(() => {
   width: 100%;
 }
 
+/* Empty State */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 350px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin-top: 16px;
+}
+
+.empty-state p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .hamburger-btn {
@@ -316,7 +375,12 @@ const indicacoesChartOption = computed(() => {
   }
 
   .chart-container-large {
-    height: 400px;
+    height: 350px;
+  }
+
+  .chart-card {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 }
 

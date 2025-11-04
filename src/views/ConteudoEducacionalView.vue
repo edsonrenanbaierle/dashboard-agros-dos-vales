@@ -16,6 +16,17 @@
 
       <!-- Dashboard Content -->
       <div class="dashboard-body">
+        <!-- Loading State -->
+        <LoadingSpinner v-if="loading" text="Carregando dados de conteúdo..." />
+
+        <!-- Error State -->
+        <div v-else-if="error" class="error-state">
+          <p>{{ error }}</p>
+          <button @click="loadConteudoData" class="retry-btn">Tentar novamente</button>
+        </div>
+
+        <!-- Data Content -->
+        <div v-else-if="conteudoData">
         <!-- Stats Cards -->
         <div class="stats-grid">
           <!-- Total de Artigos -->
@@ -62,7 +73,10 @@
         <div class="chart-section">
           <div class="chart-card">
             <h3 class="chart-title">Evolução da Criação de Conteúdo</h3>
-            <v-chart :option="evolutionChartOption" class="chart-container-large" />
+            <v-chart v-if="conteudoData.criacao_temporal && (conteudoData.criacao_temporal.artigos_por_mes.length > 0 || conteudoData.criacao_temporal.cursos_por_mes.length > 0 || conteudoData.criacao_temporal.eventos_por_mes.length > 0)" :option="evolutionChartOption" class="chart-container-evolution" />
+            <div v-else class="empty-state">
+              <p>Sem dados de evolução disponíveis</p>
+            </div>
           </div>
         </div>
 
@@ -72,7 +86,7 @@
           <div class="content-card">
             <h3 class="content-title">Próximos Cursos e Eventos</h3>
             
-            <div class="content-list">
+            <div v-if="conteudoData.cursos.proximos && conteudoData.cursos.proximos.length > 0" class="content-list">
               <div v-for="(curso, index) in conteudoData.cursos.proximos.slice(0, 4)" :key="index" class="content-item">
                 <div class="content-icon">
                   <Calendar :size="20" />
@@ -85,13 +99,16 @@
                 <span class="badge curso">Curso</span>
               </div>
             </div>
+            <div v-else class="empty-state-small">
+              <p>Nenhum curso ou evento próximo</p>
+            </div>
           </div>
 
           <!-- Artigos Mais Recentes -->
           <div class="content-card">
             <h3 class="content-title">Artigos Mais Recentes</h3>
             
-            <div class="articles-list">
+            <div v-if="conteudoData.artigos.recentes && conteudoData.artigos.recentes.length > 0" class="articles-list">
               <div v-for="(artigo, index) in conteudoData.artigos.recentes" :key="index" class="article-item">
                 <div class="article-image">
                   <FileText :size="24" />
@@ -102,7 +119,11 @@
                 </div>
               </div>
             </div>
+            <div v-else class="empty-state-small">
+              <p>Nenhum artigo recente</p>
+            </div>
           </div>
+        </div>
         </div>
       </div>
     </main>
@@ -110,7 +131,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
@@ -119,6 +140,8 @@ import { TitleComponent, TooltipComponent, GridComponent, LegendComponent } from
 import { Menu, BookOpen, GraduationCap, Lightbulb, Calendar, FileText } from 'lucide-vue-next'
 import Sidebar from '../components/Sidebar.vue'
 import LogoutButton from '../components/LogoutButton.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import { analyticsService } from '@/services'
 
 // Register ECharts components
 use([CanvasRenderer, LineChart, TitleComponent, TooltipComponent, GridComponent, LegendComponent])
@@ -132,128 +155,30 @@ const toggleSidebar = () => {
   }
 }
 
-// Mock data
-const conteudoData = ref({
-  artigos: {
-    total: 87,
-    ativos: 78,
-    com_arquivo: 45,
-    com_link: 52,
-    recentes: [
-      {
-        titulo: "Como cultivar plantas medicinais em pequenos espaços",
-        created_at: "2025-10-20T14:30:00.000000Z"
-      },
-      {
-        titulo: "Benefícios do alecrim para a saúde cardiovascular",
-        created_at: "2025-10-18T09:15:00.000000Z"
-      },
-      {
-        titulo: "Guia completo: Secagem e armazenamento de ervas",
-        created_at: "2025-10-15T16:45:00.000000Z"
-      },
-      {
-        titulo: "Plantas aromáticas: da horta à indústria cosmética",
-        created_at: "2025-10-12T11:20:00.000000Z"
-      },
-      {
-        titulo: "Controle biológico de pragas com plantas companheiras",
-        created_at: "2025-10-08T13:00:00.000000Z"
-      }
-    ]
-  },
-  cursos: {
-    total: 24,
-    ativos: 18,
-    proximos: [
-      {
-        titulo: "Cultivo Orgânico de Plantas Medicinais - Módulo Avançado",
-        data_inicio: "2025-11-05T08:00:00.000000Z",
-        data_fim: "2025-11-05T17:00:00.000000Z",
-        local: "Caxias do Sul - RS"
-      },
-      {
-        titulo: "Fitoterapia Aplicada: Da Planta ao Produto Final",
-        data_inicio: "2025-11-12T09:00:00.000000Z",
-        data_fim: "2025-11-14T18:00:00.000000Z",
-        local: "Porto Alegre - RS"
-      },
-      {
-        titulo: "Produção de Óleos Essenciais - Destilação Artesanal",
-        data_inicio: "2025-11-18T13:00:00.000000Z",
-        data_fim: "2025-11-18T17:00:00.000000Z",
-        local: "Online"
-      },
-      {
-        titulo: "Identificação Botânica de Plantas Medicinais",
-        data_inicio: "2025-11-25T08:30:00.000000Z",
-        data_fim: "2025-11-26T16:30:00.000000Z",
-        local: "Bento Gonçalves - RS"
-      }
-    ],
-    inscricoes_abertas: 3
-  },
-  eventos: {
-    total: 16,
-    ativos: 12,
-    proximos: [
-      {
-        titulo: "1ª Feira de Plantas Medicinais do Vale dos Sinos",
-        data_realizacao: "2025-11-08T09:00:00.000000Z",
-        local: "Novo Hamburgo - RS"
-      },
-      {
-        titulo: "Encontro Regional de Produtores de Aromáticas",
-        data_realizacao: "2025-11-15T14:00:00.000000Z",
-        local: "Farroupilha - RS"
-      }
-    ],
-    inscricoes_abertas: 2
-  },
-  criacao_temporal: {
-    artigos_por_mes: [
-      { mes: "2024-11", total: 4 },
-      { mes: "2024-12", total: 6 },
-      { mes: "2025-01", total: 8 },
-      { mes: "2025-02", total: 5 },
-      { mes: "2025-03", total: 9 },
-      { mes: "2025-04", total: 7 },
-      { mes: "2025-05", total: 10 },
-      { mes: "2025-06", total: 6 },
-      { mes: "2025-07", total: 8 },
-      { mes: "2025-08", total: 9 },
-      { mes: "2025-09", total: 7 },
-      { mes: "2025-10", total: 9 }
-    ],
-    cursos_por_mes: [
-      { mes: "2024-11", total: 1 },
-      { mes: "2024-12", total: 2 },
-      { mes: "2025-01", total: 1 },
-      { mes: "2025-02", total: 3 },
-      { mes: "2025-03", total: 2 },
-      { mes: "2025-04", total: 2 },
-      { mes: "2025-05", total: 3 },
-      { mes: "2025-06", total: 1 },
-      { mes: "2025-07", total: 2 },
-      { mes: "2025-08", total: 2 },
-      { mes: "2025-09", total: 3 },
-      { mes: "2025-10", total: 2 }
-    ],
-    eventos_por_mes: [
-      { mes: "2024-11", total: 1 },
-      { mes: "2024-12", total: 2 },
-      { mes: "2025-01", total: 0 },
-      { mes: "2025-02", total: 1 },
-      { mes: "2025-03", total: 2 },
-      { mes: "2025-04", total: 1 },
-      { mes: "2025-05", total: 2 },
-      { mes: "2025-06", total: 1 },
-      { mes: "2025-07", total: 1 },
-      { mes: "2025-08", total: 2 },
-      { mes: "2025-09", total: 1 },
-      { mes: "2025-10", total: 2 }
-    ]
+// Estado para dados da API
+const conteudoData = ref(null)
+const loading = ref(false)
+const error = ref(null)
+
+// Carregar dados da API
+const loadConteudoData = async () => {
+  loading.value = true
+  error.value = null
+
+  try {
+    const data = await analyticsService.getConteudo()
+    conteudoData.value = data
+  } catch (err) {
+    console.error('Erro ao carregar dados de conteúdo:', err)
+    error.value = 'Erro ao carregar os dados. Tente novamente.'
+  } finally {
+    loading.value = false
   }
+}
+
+// Carregar dados ao montar o componente
+onMounted(() => {
+  loadConteudoData()
 })
 
 // Helper function
@@ -272,56 +197,90 @@ const getMonthLabel = (mes) => {
 }
 
 // Evolution Line Chart
-const evolutionChartOption = computed(() => ({
-  tooltip: {
-    trigger: 'axis'
-  },
-  legend: {
-    data: ['Artigos', 'Cursos', 'Eventos'],
-    bottom: 0
-  },
-  grid: {
-    left: '3%',
-    right: '4%',
-    bottom: '10%',
-    top: '3%',
-    containLabel: true
-  },
-  xAxis: {
-    type: 'category',
-    boundaryGap: false,
-    data: conteudoData.value.criacao_temporal.artigos_por_mes.map(item => getMonthLabel(item.mes))
-  },
-  yAxis: {
-    type: 'value'
-  },
-  series: [
-    {
-      name: 'Artigos',
-      type: 'line',
-      data: conteudoData.value.criacao_temporal.artigos_por_mes.map(item => item.total),
-      smooth: true,
-      itemStyle: { color: '#10b981' },
-      lineStyle: { width: 3 }
+const evolutionChartOption = computed(() => {
+  if (!conteudoData.value || !conteudoData.value.criacao_temporal) return {}
+  
+  // Combinar todos os meses de artigos, cursos e eventos
+  const allMonths = new Set([
+    ...conteudoData.value.criacao_temporal.artigos_por_mes.map(item => item.mes),
+    ...conteudoData.value.criacao_temporal.cursos_por_mes.map(item => item.mes),
+    ...conteudoData.value.criacao_temporal.eventos_por_mes.map(item => item.mes)
+  ])
+  
+  const sortedMonths = Array.from(allMonths).sort()
+  
+  // Criar mapas para fácil acesso
+  const artigosMap = new Map(conteudoData.value.criacao_temporal.artigos_por_mes.map(item => [item.mes, item.total]))
+  const cursosMap = new Map(conteudoData.value.criacao_temporal.cursos_por_mes.map(item => [item.mes, item.total]))
+  const eventosMap = new Map(conteudoData.value.criacao_temporal.eventos_por_mes.map(item => [item.mes, item.total]))
+  
+  // Checagem se é mobile
+  const isMobile = window.innerWidth <= 768
+  
+  return {
+    tooltip: {
+      trigger: 'axis'
     },
-    {
-      name: 'Cursos',
-      type: 'line',
-      data: conteudoData.value.criacao_temporal.cursos_por_mes.map(item => item.total),
-      smooth: true,
-      itemStyle: { color: '#3b82f6' },
-      lineStyle: { width: 3 }
+    legend: {
+      data: ['Artigos', 'Cursos', 'Eventos'],
+      bottom: 0,
+      textStyle: {
+        fontSize: isMobile ? 11 : 12
+      }
     },
-    {
-      name: 'Eventos',
-      type: 'line',
-      data: conteudoData.value.criacao_temporal.eventos_por_mes.map(item => item.total),
-      smooth: true,
-      itemStyle: { color: '#60a5fa' },
-      lineStyle: { width: 3 }
-    }
-  ]
-}))
+    grid: {
+      left: isMobile ? '8%' : '3%',
+      right: isMobile ? '5%' : '4%',
+      bottom: isMobile ? '15%' : '10%',
+      top: isMobile ? '5%' : '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: sortedMonths.map(mes => getMonthLabel(mes)),
+      axisLabel: {
+        fontSize: isMobile ? 10 : 12,
+        interval: isMobile ? 'auto' : 'auto',
+        rotate: isMobile ? 45 : 0,
+        margin: isMobile ? 12 : 8
+      }
+    },
+    yAxis: {
+      type: 'value',
+      minInterval: 1,
+      axisLabel: {
+        fontSize: isMobile ? 10 : 12
+      }
+    },
+    series: [
+      {
+        name: 'Artigos',
+        type: 'line',
+        data: sortedMonths.map(mes => artigosMap.get(mes) || 0),
+        smooth: true,
+        itemStyle: { color: '#10b981' },
+        lineStyle: { width: isMobile ? 2 : 3 }
+      },
+      {
+        name: 'Cursos',
+        type: 'line',
+        data: sortedMonths.map(mes => cursosMap.get(mes) || 0),
+        smooth: true,
+        itemStyle: { color: '#3b82f6' },
+        lineStyle: { width: isMobile ? 2 : 3 }
+      },
+      {
+        name: 'Eventos',
+        type: 'line',
+        data: sortedMonths.map(mes => eventosMap.get(mes) || 0),
+        smooth: true,
+        itemStyle: { color: '#60a5fa' },
+        lineStyle: { width: isMobile ? 2 : 3 }
+      }
+    ]
+  }
+})
 </script>
 
 <style scoped>
@@ -378,6 +337,38 @@ const evolutionChartOption = computed(() => ({
 .dashboard-body {
   padding: 32px;
   flex: 1;
+}
+
+/* Error State */
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: 32px;
+}
+
+.error-state p {
+  font-size: 16px;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.retry-btn {
+  padding: 10px 20px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retry-btn:hover {
+  background-color: #059669;
 }
 
 /* Stats Grid */
@@ -460,6 +451,46 @@ const evolutionChartOption = computed(() => ({
 .chart-container-large {
   height: 350px;
   width: 100%;
+}
+
+.chart-container-evolution {
+  height: 350px;
+  width: 100%;
+}
+
+/* Empty States */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin-top: 16px;
+}
+
+.empty-state p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+.empty-state-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 150px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin-top: 16px;
+}
+
+.empty-state-small p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* Two Column Grid */
@@ -630,6 +661,16 @@ const evolutionChartOption = computed(() => ({
 
   .chart-container-large {
     height: 300px;
+  }
+
+  .chart-container-evolution {
+    height: 400px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .chart-card {
+    padding: 16px;
   }
 }
 
