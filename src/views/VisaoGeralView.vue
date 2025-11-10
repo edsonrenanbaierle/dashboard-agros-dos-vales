@@ -68,7 +68,10 @@
           <div class="chart-card">
             <h3 class="chart-title">Top 5 Plantas Mais Cultivadas</h3>
             <p class="chart-description">As plantas mais populares e com maior volume na plataforma.</p>
-            <v-chart :option="topPlantsChartOption" class="chart-container" />
+            <v-chart v-if="dashboardData.top_plantas && dashboardData.top_plantas.length > 0" :option="topPlantsChartOption" class="chart-container" />
+            <div v-else class="empty-state-small">
+              <p>Nenhuma planta cadastrada ainda</p>
+            </div>
           </div>
 
           <!-- Densidade de Usuários por Estado -->
@@ -200,6 +203,12 @@ const topPlantsChartOption = computed(() => {
       trigger: 'axis',
       axisPointer: {
         type: 'shadow'
+      },
+      formatter: (params) => {
+        const dataIndex = dashboardData.value.top_plantas.length - 1 - params[0].dataIndex
+        const planta = dashboardData.value.top_plantas[dataIndex]
+        const nome = planta.nome_popular || planta.nome_cientifico || 'Sem nome'
+        return `${nome}<br/>Produtores: ${planta.total_produtores}`
       }
     },
     grid: {
@@ -214,7 +223,7 @@ const topPlantsChartOption = computed(() => {
     },
     yAxis: {
       type: 'category',
-      data: dashboardData.value.top_plantas.map(p => p.nome).reverse(),
+      data: dashboardData.value.top_plantas.map(p => p.nome_popular || p.nome_cientifico || 'Sem nome').reverse(),
       axisLine: { show: false },
       axisTick: { show: false }
     },
@@ -222,7 +231,7 @@ const topPlantsChartOption = computed(() => {
       {
         type: 'bar',
         data: dashboardData.value.top_plantas.map((p, i) => ({
-          value: p.acessos,
+          value: p.total_produtores,
           itemStyle: {
             color: ['#10b981', '#3b82f6', '#a3a3a3', '#6366f1', '#84cc16'][4 - i]
           }
@@ -364,6 +373,24 @@ const topPlantsChartOption = computed(() => {
 
 .retry-btn:hover {
   background-color: #059669;
+}
+
+/* Empty States */
+.empty-state-small {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px dashed #d1d5db;
+  margin-top: 16px;
+}
+
+.empty-state-small p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* Stats Grid */

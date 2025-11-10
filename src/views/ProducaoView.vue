@@ -86,13 +86,13 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="planta in producaoData.producao_estimada.por_planta.slice(0, 10)" :key="planta.nome_popular">
-                    <td class="planta-nome">{{ planta.nome_popular }}</td>
-                    <td>{{ getTipoPlanta(planta.nome_popular) }}</td>
+                  <tr v-for="planta in producaoData.producao_estimada.por_planta.slice(0, 10)" :key="planta.nome_popular || planta.nome_cientifico">
+                    <td class="planta-nome">{{ planta.nome_popular || planta.nome_cientifico || 'Sem nome' }}</td>
+                    <td>{{ getTipoPlanta(planta.nome_popular || planta.nome_cientifico) }}</td>
                     <td>{{ (planta.producao_total / 1000).toLocaleString('pt-BR') }} Toneladas</td>
                     <td>
-                      <span :class="['status-badge', getStatusClass(planta.nome_popular)]">
-                        {{ getStatus(planta.nome_popular) }}
+                      <span :class="['status-badge', getStatusClass(planta.nome_popular || planta.nome_cientifico)]">
+                        {{ getStatus(planta.nome_popular || planta.nome_cientifico) }}
                       </span>
                     </td>
                   </tr>
@@ -115,7 +115,7 @@
                   <Package :size="20" />
                 </div>
                 <div class="delivery-info">
-                  <p class="delivery-title">{{ entrega.planta.nome_popular }} - {{ (entrega.producao_est / 1000).toFixed(0) }} Toneladas</p>
+                  <p class="delivery-title">{{ getPlantaName(entrega.planta_id) }} - {{ (entrega.producao_est / 1000).toFixed(0) }} Toneladas</p>
                   <p class="delivery-date">{{ formatDate(entrega.data_entrega_est) }} para {{ entrega.usuario.nome }}</p>
                 </div>
                 <span class="status-badge agendado">agendado</span>
@@ -228,6 +228,21 @@ const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
+const getPlantaName = (plantaId) => {
+  if (!producaoData.value || !producaoData.value.producao_estimada || !producaoData.value.producao_estimada.por_planta) {
+    return 'Planta não identificada'
+  }
+  
+  const planta = producaoData.value.producao_estimada.por_planta.find(p => {
+    return true
+  })
+  
+  if (planta) {
+    return planta.nome_popular || planta.nome_cientifico || 'Planta não identificada'
+  }
+  
+  return 'Planta não identificada'
+}
 
 // Top Plantas Bar Chart
 const topPlantasChartOption = computed(() => {
@@ -240,7 +255,10 @@ const topPlantasChartOption = computed(() => {
         type: 'shadow'
       },
       formatter: (params) => {
-        return `${params[0].name}: ${(params[0].value / 1000).toFixed(0)} Toneladas`
+        const dataIndex = producaoData.value.producao_estimada.por_planta.length - 1 - params[0].dataIndex
+        const planta = producaoData.value.producao_estimada.por_planta[dataIndex]
+        const nome = planta.nome_popular || planta.nome_cientifico || 'Sem nome'
+        return `${nome}<br/>Produção: ${(params[0].value / 1000).toFixed(0)} Toneladas<br/>Produtores: ${planta.produtores}`
       }
     },
     grid: {
@@ -259,7 +277,7 @@ const topPlantasChartOption = computed(() => {
     },
     yAxis: {
       type: 'category',
-      data: producaoData.value.producao_estimada.por_planta.map(p => p.nome_popular).reverse(),
+      data: producaoData.value.producao_estimada.por_planta.map(p => p.nome_popular || p.nome_cientifico || 'Sem nome').reverse(),
       axisLine: { show: false },
       axisTick: { show: false }
     },
