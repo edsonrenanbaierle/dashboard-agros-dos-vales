@@ -102,9 +102,7 @@
 
           <!-- Distribuição por Estado -->
           <div class="content-card">
-            <h3 class="section-title">Distribuição de Usuários por Estado (Brasil)</h3>
-            <p class="section-description">Os tons mais escuros de verde indicam maior concentração de usuários.</p>
-            
+            <h3 class="section-title">Distribuição de Usuários por Estado (Brasil)</h3>            
             <div class="distribution-list">
               <div v-for="(estado, index) in usuariosData.distribuicao_geografica.por_estado.slice(0, 9)" :key="index" class="distribution-item">
                 <div class="distribution-info">

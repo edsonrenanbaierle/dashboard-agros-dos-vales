@@ -49,7 +49,7 @@
             <div class="stat-header">
               <div>
                 <p class="stat-label">Produção Estimada Total</p>
-                <p class="stat-value">{{ (producaoData.producao_estimada.total / 1000).toLocaleString('pt-BR') }} Toneladas</p>
+                <p class="stat-value">{{ producaoData.producao_estimada.total }} kg</p>
                 <p class="stat-subtitle">Para o próximo mês</p>
               </div>
             </div>
@@ -80,7 +80,7 @@
                 <thead>
                   <tr>
                     <th>Planta</th>
-                    <th>Tipo</th>
+                    <th>Produtores</th>
                     <th>Rendimento Estimado</th>
                     <th>Status</th>
                   </tr>
@@ -88,11 +88,11 @@
                 <tbody>
                   <tr v-for="planta in producaoData.producao_estimada.por_planta.slice(0, 10)" :key="planta.nome_popular || planta.nome_cientifico">
                     <td class="planta-nome">{{ planta.nome_popular || planta.nome_cientifico || 'Sem nome' }}</td>
-                    <td>{{ getTipoPlanta(planta.nome_popular || planta.nome_cientifico) }}</td>
-                    <td>{{ (planta.producao_total / 1000).toLocaleString('pt-BR') }} Toneladas</td>
+                    <td>{{ planta.produtores }}</td>
+                    <td>{{ planta.producao_total }} kg</td>
                     <td>
-                      <span :class="['status-badge', getStatusClass(planta.nome_popular || planta.nome_cientifico)]">
-                        {{ getStatus(planta.nome_popular || planta.nome_cientifico) }}
+                      <span class="status-badge em-desenvolvimento">
+                        Em Produção
                       </span>
                     </td>
                   </tr>
@@ -106,17 +106,17 @@
 
           <!-- Entregas Agendadas -->
           <div class="deliveries-card">
-            <h3 class="table-title">Entregas Agendadas (Próximos 30 Dias)</h3>
+            <h3 class="table-title">Entregas Agendadas</h3>
             <p class="table-description">Próximas remessas de produção.</p>
             
             <div v-if="producaoData.cronograma_entregas && producaoData.cronograma_entregas.length > 0" class="deliveries-list">
-              <div v-for="entrega in producaoData.cronograma_entregas" :key="entrega.planta.id" class="delivery-item">
+              <div v-for="entrega in producaoData.cronograma_entregas" :key="entrega.planta_id + '-' + entrega.usuario_id" class="delivery-item">
                 <div class="delivery-icon">
                   <Package :size="20" />
                 </div>
                 <div class="delivery-info">
-                  <p class="delivery-title">{{ getPlantaName(entrega.planta_id) }} - {{ (entrega.producao_est / 1000).toFixed(0) }} Toneladas</p>
-                  <p class="delivery-date">{{ formatDate(entrega.data_entrega_est) }} para {{ entrega.usuario.nome }}</p>
+                  <p class="delivery-title">{{ getPlantaName(entrega.planta_id) }} - {{ entrega.producao_est }} kg</p>
+                  <p class="delivery-date">{{ formatDate(entrega.data_entrega_est) }} - {{ entrega.usuario.nome }}</p>
                 </div>
                 <span class="status-badge agendado">agendado</span>
               </div>
@@ -184,46 +184,6 @@ onMounted(() => {
 })
 
 // Helper functions
-const getTipoPlanta = (nome) => {
-  const tipos = {
-    'Milho': 'Grão',
-    'Soja': 'Grão',
-    'Trigo': 'Grão',
-    'Arroz': 'Grão',
-    'Cana-de-açúcar': 'Haste',
-    'Batata': 'Tubérculo',
-    'Café': 'Fruto',
-    'Tomate': 'Fruto',
-    'Cenoura': 'Raiz',
-    'Algodão': 'Fibra'
-  }
-  return tipos[nome] || 'Grão'
-}
-
-const getStatus = (nome) => {
-  const status = {
-    'Milho': 'Em Desenvolvimento',
-    'Soja': 'Pronto para Colheita',
-    'Trigo': 'Colhido',
-    'Arroz': 'Em Desenvolvimento',
-    'Cana-de-açúcar': 'Em Desenvolvimento',
-    'Batata': 'Em Desenvolvimento',
-    'Café': 'Pronto para Colheita',
-    'Tomate': 'Em Desenvolvimento',
-    'Cenoura': 'Colhido',
-    'Algodão': 'Em Desenvolvimento'
-  }
-  return status[nome] || 'Em Desenvolvimento'
-}
-
-const getStatusClass = (nome) => {
-  const status = getStatus(nome)
-  if (status === 'Em Desenvolvimento') return 'em-desenvolvimento'
-  if (status === 'Pronto para Colheita') return 'pronto-colheita'
-  if (status === 'Colhido') return 'colhido'
-  return 'em-desenvolvimento'
-}
-
 const formatDate = (dateStr) => {
   const date = new Date(dateStr)
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
@@ -258,7 +218,7 @@ const topPlantasChartOption = computed(() => {
         const dataIndex = producaoData.value.producao_estimada.por_planta.length - 1 - params[0].dataIndex
         const planta = producaoData.value.producao_estimada.por_planta[dataIndex]
         const nome = planta.nome_popular || planta.nome_cientifico || 'Sem nome'
-        return `${nome}<br/>Produção: ${(params[0].value / 1000).toFixed(0)} Toneladas<br/>Produtores: ${planta.produtores}`
+        return `${nome}<br/>Produção: ${params[0].value} kg<br/>Produtores: ${planta.produtores}`
       }
     },
     grid: {
@@ -272,7 +232,7 @@ const topPlantasChartOption = computed(() => {
       type: 'value',
       show: true,
       axisLabel: {
-        formatter: (value) => `${(value / 1000).toFixed(0)}`
+        formatter: (value) => `${value} kg`
       }
     },
     yAxis: {
@@ -283,7 +243,7 @@ const topPlantasChartOption = computed(() => {
     },
     series: [
       {
-        name: 'Produção (toneladas)',
+        name: 'Produção (kg)',
         type: 'bar',
         data: producaoData.value.producao_estimada.por_planta.map(p => ({
           value: p.producao_total,
