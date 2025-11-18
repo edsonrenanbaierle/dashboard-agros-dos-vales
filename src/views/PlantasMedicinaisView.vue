@@ -51,7 +51,7 @@
         <!-- Top 10 Indicações Chart -->
         <div class="chart-section">
           <div class="chart-card">
-            <h3 class="chart-title">Top 10 Indicações Terapêuticas Mais Usadas</h3>
+            <h3 class="chart-title">Top 10 Indicações Terapêuticas mais comuns nas plantas</h3>
             <p class="chart-description">Número de usos</p>
             <v-chart v-if="plantasData.indicacoes.mais_usadas && plantasData.indicacoes.mais_usadas.length > 0" :option="indicacoesChartOption" class="chart-container-large" />
             <div v-else class="empty-state">

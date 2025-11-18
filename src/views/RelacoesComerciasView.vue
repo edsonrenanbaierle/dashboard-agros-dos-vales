@@ -72,15 +72,15 @@
                 <thead>
                   <tr>
                     <th>Nome</th>
-                    <th>Plantas Cultivadas</th>
+                    <th>Localização</th>
                     <th>Produção Estimada</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr v-for="(produtor, index) in produtoresAgrupados.slice(0, 6)" :key="index">
                     <td class="producer-name">{{ produtor.nome }}</td>
-                    <td class="plants-list">{{ produtor.plantas.join(', ') }}</td>
-                    <td class="production">{{ produtor.producao_total }} kg/ano</td>
+                    <td class="plants-list">{{ produtor.cidade }} - {{ produtor.estado }}</td>
+                    <td class="production">{{ produtor.producao_total }} kg</td>
                   </tr>
                 </tbody>
               </table>
@@ -207,11 +207,9 @@ const produtoresAgrupados = computed(() => {
         nome: item.nome,
         cidade: item.cidade,
         estado: item.estado,
-        plantas: [],
         producao_total: 0
       }
     }
-    grupos[item.nome].plantas.push(item.nome_popular)
     grupos[item.nome].producao_total += item.producao_est
   })
   

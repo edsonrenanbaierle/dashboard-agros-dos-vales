@@ -86,8 +86,9 @@
           <div class="content-card">
             <h3 class="content-title">Próximos Cursos e Eventos</h3>
             
-            <div v-if="conteudoData.cursos.proximos && conteudoData.cursos.proximos.length > 0" class="content-list">
-              <div v-for="(curso, index) in conteudoData.cursos.proximos.slice(0, 4)" :key="index" class="content-item">
+            <div v-if="(conteudoData.cursos.proximos && conteudoData.cursos.proximos.length > 0) || (conteudoData.eventos.proximos && conteudoData.eventos.proximos.length > 0)" class="content-list">
+              <!-- Cursos -->
+              <div v-for="(curso, index) in conteudoData.cursos.proximos.slice(0, 3)" :key="'curso-' + index" class="content-item">
                 <div class="content-icon">
                   <Calendar :size="20" />
                 </div>
@@ -97,6 +98,19 @@
                   <p class="content-description">{{ curso.local }}</p>
                 </div>
                 <span class="badge curso">Curso</span>
+              </div>
+              
+              <!-- Eventos -->
+              <div v-for="(evento, index) in conteudoData.eventos.proximos.slice(0, 3)" :key="'evento-' + index" class="content-item">
+                <div class="content-icon evento-icon">
+                  <Calendar :size="20" />
+                </div>
+                <div class="content-info">
+                  <p class="content-item-title">{{ evento.titulo }}</p>
+                  <p class="content-date">{{ formatDate(evento.data_realizacao) }}</p>
+                  <p class="content-description">{{ evento.local }}</p>
+                </div>
+                <span class="badge evento">Evento</span>
               </div>
             </div>
             <div v-else class="empty-state-small">
@@ -544,6 +558,11 @@ const evolutionChartOption = computed(() => {
   flex-shrink: 0;
 }
 
+.content-icon.evento-icon {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
 .content-info {
   flex: 1;
 }
@@ -580,6 +599,11 @@ const evolutionChartOption = computed(() => {
 .badge.curso {
   background-color: #dbeafe;
   color: #1e40af;
+}
+
+.badge.evento {
+  background-color: #fef3c7;
+  color: #b45309;
 }
 
 /* Articles List */
