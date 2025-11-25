@@ -26,7 +26,7 @@
         </div>
 
         <!-- Data Content -->
-        <div v-else-if="usuariosData">
+        <div v-else-if="usuariosData && usuariosData.totais">
         <!-- Stats Cards -->
         <div class="stats-grid">
           <!-- Total de Usuários -->

@@ -26,7 +26,7 @@
         </div>
 
         <!-- Data Content -->
-        <div v-else-if="dashboardData">
+        <div v-else-if="dashboardData && dashboardData.usuarios">
           <!-- Stats Cards -->
           <div class="stats-grid">
             <!-- Total de Usuários -->
@@ -78,11 +78,14 @@
           <div class="chart-card">
             <h3 class="chart-title">Densidade de Usuários por Estado (Brasil)</h3>
             <p class="chart-description">Visualização geográfica da distribuição de usuários.</p>
-            <div class="estado-list">
+            <div v-if="dashboardData.distribuicao_geografica && dashboardData.distribuicao_geografica.length > 0" class="estado-list">
               <div v-for="estado in dashboardData.distribuicao_geografica.slice(0, 5)" :key="estado.estado" class="estado-item">
                 <span class="estado-nome">{{ estado.estado }}</span>
                 <span class="estado-usuarios">{{ estado.total }}</span>
               </div>
+            </div>
+            <div v-else class="empty-state-small">
+              <p>Nenhuma distribuição geográfica disponível</p>
             </div>
           </div>
         </div>
