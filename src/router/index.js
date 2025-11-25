@@ -72,8 +72,6 @@ router.beforeEach((to, from, next) => {
 
   // Se a rota requer autenticação e o usuário não está logado
   if (requiresAuth && !isAuthenticated) {
-    console.log('aqio')
-    console.log(isAuthenticated, requiresAuth)
     next('/')
   }
   // Se o usuário está logado e tenta acessar o login, redireciona para visão geral
