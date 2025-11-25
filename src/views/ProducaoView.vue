@@ -208,6 +208,8 @@ const getPlantaName = (plantaId) => {
 const topPlantasChartOption = computed(() => {
   if (!producaoData.value || !producaoData.value.producao_estimada || !producaoData.value.producao_estimada.por_planta || producaoData.value.producao_estimada.por_planta.length === 0) return {}
   
+  const isMobile = window.innerWidth <= 768
+
   return {
     tooltip: {
       trigger: 'axis',
@@ -222,24 +224,30 @@ const topPlantasChartOption = computed(() => {
       }
     },
     grid: {
-      left: '3%',
-      right: '4%',
-      bottom: '3%',
-      top: '3%',
+      left: isMobile ? '5%' : '3%',
+      right: isMobile ? '5%' : '4%',
+      bottom: isMobile ? '15%' : '3%',
+      top: isMobile ? '3%' : '3%',
       containLabel: true
     },
     xAxis: {
       type: 'value',
       show: true,
       axisLabel: {
-        formatter: (value) => `${value} kg`
+        formatter: (value) => `${value} kg`,
+        fontSize: isMobile ? 10 : 12,
+        rotate: isMobile ? 45 : 0,
+        margin: isMobile ? 15 : 8
       }
     },
     yAxis: {
       type: 'category',
       data: producaoData.value.producao_estimada.por_planta.map(p => p.nome_popular || p.nome_cientifico || 'Sem nome').reverse(),
       axisLine: { show: false },
-      axisTick: { show: false }
+      axisTick: { show: false },
+      axisLabel: {
+        fontSize: isMobile ? 11 : 12
+      }
     },
     series: [
       {
