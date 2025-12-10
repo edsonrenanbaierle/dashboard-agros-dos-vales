@@ -93,7 +93,7 @@
           <!-- Distribuição de Produtores -->
           <div class="content-card">
             <h3 class="section-title">Distribuição de Produtores</h3>
-            <p class="section-description">Localização geográfica dos produtores no Brasil.</p>
+            <p class="section-description">Localização geográfica dos produtores LIstados.</p>
             
             <div v-if="distribuicaoCidades.length > 0" class="distribution-list">
               <div v-for="(cidade, index) in distribuicaoCidades" :key="index" class="distribution-item">
