@@ -1,12 +1,10 @@
 import axios from 'axios'
 
-// Configuração base do axios
 const api = axios.create({
   baseURL: process.env.VUE_APP_API_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'ngrok-skip-browser-warning': 'true'
+    'Accept': 'application/json'
   }
 })
 

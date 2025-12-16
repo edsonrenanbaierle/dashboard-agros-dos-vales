@@ -248,7 +248,6 @@ const topPlantsChartOption = computed(() => {
 
 <style scoped>
 
-/* Estado List - <CHANGE> Improved styling for geographic distribution */
 .estado-list {
   display: flex;
   flex-direction: column;

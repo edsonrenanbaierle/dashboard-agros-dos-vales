@@ -7,7 +7,6 @@
     <main class="main-content">
       <!-- Header -->
       <header class="dashboard-header">
-        <!-- <CHANGE> Added hamburger menu button for mobile -->
         <button class="hamburger-btn" @click="toggleSidebar">
           <Menu :size="24" />
         </button>
@@ -148,7 +147,6 @@ import { analyticsService } from '@/services'
 // Register ECharts components
 use([CanvasRenderer, BarChart, TitleComponent, TooltipComponent, GridComponent])
 
-// <CHANGE> Added sidebar ref and toggle function for mobile menu
 const sidebarRef = ref(null)
 
 const toggleSidebar = () => {
@@ -303,7 +301,6 @@ const topPlantasChartOption = computed(() => {
   flex: 1;
 }
 
-/* <CHANGE> Added hamburger button styles for mobile menu */
 .hamburger-btn {
   display: none;
   background: none;
@@ -611,7 +608,6 @@ const topPlantasChartOption = computed(() => {
   margin: 0;
 }
 
-/* <CHANGE> Improved responsive breakpoints and fixed chart overflow */
 @media (max-width: 768px) {
   .hamburger-btn {
     display: block;
@@ -655,7 +651,6 @@ const topPlantasChartOption = computed(() => {
   }
 }
 
-/* <CHANGE> Added medium screen breakpoint for chart overflow fix at 700px */
 @media (max-width: 900px) and (min-width: 769px) {
   .chart-container-large {
     height: 350px;

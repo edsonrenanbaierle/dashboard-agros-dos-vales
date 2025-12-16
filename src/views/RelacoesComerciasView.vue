@@ -180,7 +180,6 @@ onMounted(() => {
   loadRelacoesData()
 })
 
-// Computed: Agrupar indústrias por nome
 const industriasAgrupadas = computed(() => {
   const grupos = {}
   

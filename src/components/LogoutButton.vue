@@ -13,7 +13,6 @@ import { authService } from '@/services'
 const router = useRouter()
 
 const handleLogout = () => {
-  // Chama o serviço de logout
   authService.logout()
   
   // Redireciona para a página de login

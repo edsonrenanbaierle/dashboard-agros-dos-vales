@@ -180,7 +180,6 @@ defineExpose({ openSidebar })
   display: none;
 }
 
-/* Mobile Responsive - <CHANGE> Added mobile menu functionality */
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
